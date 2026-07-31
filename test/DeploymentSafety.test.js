@@ -315,7 +315,7 @@ describe("BOTPass deployment safety", function () {
   it("creates then opens exactly one Testnet acceptance event", async function () {
     const organizer = "0xe604829a9c327b0d924718CfAcEF69BBdC8C0Efc";
     let open = false;
-    const receipt = { status: 1 };
+    const receipt = { status: 1, blockNumber: 123 };
     const result = await executeTestnetDemo({
       provider: {
         getNetwork: async () => ({ chainId: 968n }),
@@ -333,12 +333,53 @@ describe("BOTPass deployment safety", function () {
           open = true;
           return { hash: `0x${"22".repeat(32)}`, wait: async () => receipt };
         },
-        "getEvent(uint256)": async () => ({ organizer, claimOpen: open }),
+        "getEvent(uint256)": async (_eventId, overrides) => {
+          if (!open) expect(overrides).to.deep.equal({ blockTag: 123 });
+          return { organizer, claimOpen: open };
+        },
       },
       confirm: async (phrase) => phrase === TESTNET_EVENT_CONFIRMATION,
       log: () => {},
     });
     expect(result).to.include({ eventId: "1", organizer, claimOpen: true });
+  });
+
+  it("resumes a matching partially created Testnet event without duplicating it", async function () {
+    const organizer = "0xe604829a9c327b0d924718CfAcEF69BBdC8C0Efc";
+    let open = false;
+    let creations = 0;
+    const result = await executeTestnetDemo({
+      provider: {
+        getNetwork: async () => ({ chainId: 968n }),
+        getBlock: async () => ({ timestamp: 2_000_000_000 }),
+      },
+      organizer: { getAddress: async () => organizer },
+      contract: {
+        eventCount: async () => 1n,
+        createEvent: async () => { creations += 1; },
+        setClaimOpen: async (eventId, value) => {
+          expect([eventId, value]).to.deep.equal([1n, true]);
+          open = true;
+          return {
+            hash: `0x${"22".repeat(32)}`,
+            wait: async () => ({ status: 1, blockNumber: 124 }),
+          };
+        },
+        "getEvent(uint256)": async () => ({
+          organizer,
+          name: "BOTPass Open Claim Demo",
+          description: "Functional Open Claim acceptance event on BOT Chain Testnet.",
+          location: "BOT Chain Testnet",
+          endTime: 2_000_086_400n,
+          claimOpen: open,
+        }),
+      },
+      confirm: async () => true,
+      log: () => {},
+    });
+    expect(creations).to.equal(0);
+    expect(result).to.include({ eventId: "1", resumed: true, claimOpen: true });
+    expect(result.creationTransactionHash).to.equal(null);
   });
 
   it("keeps the Testnet provider alive until asynchronous setup settles", async function () {
