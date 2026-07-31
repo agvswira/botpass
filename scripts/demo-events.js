@@ -4,7 +4,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const readline = require("node:readline/promises");
 const { Contract, JsonRpcProvider, Wallet, getAddress } = require("ethers");
-const { BOTCHAIN_TESTNET } = require("../config/botchain");
+const { BOTCHAIN_TESTNET, getTestnetRpcUrl } = require("../config/botchain");
 const { loadProjectEnvironment } = require("./lib/environment");
 const { deploymentPath, loadFrozenArtifact, validateSelectedDeploymentRecord } = require("./lib/deployment");
 const { TESTNET_EVENT_CONFIRMATION, buildTestnetDemoEvent, executeTestnetDemo } = require("./lib/demo-events");
@@ -48,7 +48,7 @@ async function runCli({ args = process.argv.slice(2), projectRoot = PROJECT_ROOT
   const configured = process.env.BOTPASS_TESTNET_DEPLOYER_PRIVATE_KEY?.trim() || process.env.BOTCHAIN_TESTNET_DEPLOYER_PRIVATE_KEY?.trim();
   const key = configured && /^[0-9a-fA-F]{64}$/.test(configured) ? `0x${configured}` : configured;
   if (!/^0x[0-9a-fA-F]{64}$/.test(key || "")) throw new Error("BOTPASS_TESTNET_DEPLOYER_PRIVATE_KEY or BOTCHAIN_TESTNET_DEPLOYER_PRIVATE_KEY must contain a 32-byte private key");
-  const provider = new JsonRpcProvider(BOTCHAIN_TESTNET.defaultRpcUrl, 968, { staticNetwork: true });
+  const provider = new JsonRpcProvider(getTestnetRpcUrl(), 968, { staticNetwork: true });
   try {
     const signer = new Wallet(key, provider);
     if (getAddress(await signer.getAddress()) !== getAddress(record.deployerAddress)) throw new Error("Testnet demo signer must equal the deployment record deployer");

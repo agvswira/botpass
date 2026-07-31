@@ -3,7 +3,11 @@
 const path = require("node:path");
 const readline = require("node:readline/promises");
 const { JsonRpcProvider, Wallet } = require("ethers");
-const { BOTCHAIN_MAINNET, BOTCHAIN_TESTNET } = require("../config/botchain");
+const {
+  BOTCHAIN_MAINNET,
+  BOTCHAIN_TESTNET,
+  getTestnetRpcUrl,
+} = require("../config/botchain");
 const { loadProjectEnvironment } = require("./lib/environment");
 const {
   deploymentPath,
@@ -104,9 +108,15 @@ async function runCli({
     projectRoot,
     outputPath: deploymentPath(projectRoot, network.chainId),
     createProvider: () =>
-      new JsonRpcProvider(network.defaultRpcUrl, network.chainId, {
+      new JsonRpcProvider(
+        network.chainId === BOTCHAIN_TESTNET.chainId
+          ? getTestnetRpcUrl()
+          : network.defaultRpcUrl,
+        network.chainId,
+        {
         staticNetwork: true,
-      }),
+        }
+      ),
     createSigner,
     confirm: requestConfirmation,
   });
