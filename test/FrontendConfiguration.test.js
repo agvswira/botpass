@@ -20,16 +20,16 @@ const { buildDeploymentRecord } = require("../scripts/lib/deployment");
 describe("BOTPass frontend configuration", function () {
   const projectRoot = path.resolve(__dirname, "..");
 
-  it("defaults the public demo to a truthful fresh-Testnet pending state", function () {
+  it("binds the public demo to the reviewed fresh Testnet deployment", function () {
     const output = buildGeneratedOutputs();
     const config = parseGeneratedConfig(output.config);
     expect(config).to.include({
       environment: "staging",
-      status: "pending",
+      status: "active",
       chainId: TESTNET_CHAIN_ID,
-      contractAddress: null,
-      activationReviewed: false,
-      writesEnabled: false,
+      contractAddress: "0x2ea9E965433D8f42F9C0caa8BC223335f8e14f6C",
+      activationReviewed: true,
+      writesEnabled: true,
     });
     expect(output.abi).not.to.match(/claimWithSession|tokenOf|ownerOf|tokenURI/);
   });
@@ -69,8 +69,8 @@ describe("BOTPass frontend configuration", function () {
     expect(parseGeneratedConfig(buildGeneratedOutputs({ environment: "production", deployment: mainnet, activation: activation(mainnet) }).config).writesEnabled).to.equal(false);
   });
 
-  it("validates the checked-in staging configuration", function () {
-    expect(validateGeneratedFrontend(projectRoot)).to.deep.equal({ environment: "staging", chainId: TESTNET_CHAIN_ID, deploymentStatus: "pending" });
+  it("validates the checked-in active staging configuration", function () {
+    expect(validateGeneratedFrontend(projectRoot)).to.deep.equal({ environment: "staging", chainId: TESTNET_CHAIN_ID, deploymentStatus: "active" });
   });
 
   it("requires the menu routes, English guide, and anchored footer", function () {

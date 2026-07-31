@@ -3,7 +3,7 @@
 
 export const FRONTEND_CONFIG = Object.freeze({
   "environment": "staging",
-  "status": "pending",
+  "status": "active",
   "networkName": "BOT Chain Testnet",
   "chainId": 968,
   "chainIdHex": "0x3C8",
@@ -16,9 +16,9 @@ export const FRONTEND_CONFIG = Object.freeze({
     "decimals": 18
   },
   "contractName": "BOTPass",
-  "contractAddress": null,
-  "deploymentTransactionHash": null,
-  "activationReviewed": false,
+  "contractAddress": "0x2ea9E965433D8f42F9C0caa8BC223335f8e14f6C",
+  "deploymentTransactionHash": "0x019995d38fd45d2e29f9b725255df823130be0768ec7ce0c87abb1c7cc1f5d10",
+  "activationReviewed": true,
   "sourceVerified": false,
-  "writesEnabled": false
+  "writesEnabled": true
 });

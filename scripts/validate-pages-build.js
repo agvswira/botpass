@@ -27,7 +27,7 @@ for (const marker of [
 
 const builtFiles = files(dist);
 const bundle = builtFiles.filter((file) => /\.(html|js|css)$/.test(file)).map((file) => fs.readFileSync(file, "utf8")).join("\n");
-for (const marker of ["https://rpc.bohr.life", "https://scan.bohr.life", "getEvent(uint256)", "claimOpen", "claimedAt", "Fresh Testnet deployment pending"]) {
+for (const marker of ["https://rpc.bohr.life", "https://scan.bohr.life", "getEvent(uint256)", "claimOpen", "claimedAt", "Live Testnet demo", "0x2ea9E965433D8f42F9C0caa8BC223335f8e14f6C"]) {
   if (!bundle.includes(marker)) throw new Error(`Built bundle is missing ${marker}`);
 }
 for (const forbidden of [
@@ -38,4 +38,4 @@ for (const forbidden of [
   "BEGIN PRIVATE KEY",
 ]) if (bundle.includes(forbidden)) throw new Error(`Built bundle contains forbidden marker: ${forbidden}`);
 if (builtFiles.some((file) => path.basename(file).startsWith(".env"))) throw new Error("Environment file included in build");
-console.log(JSON.stringify({ customDomain: "botpass.online", environment: "staging", deploymentStatus: "pending", openClaimOnly: true, secretMarkerScan: "passed", files: builtFiles.map((file) => path.relative(dist, file)).sort() }, null, 2));
+console.log(JSON.stringify({ customDomain: "botpass.online", environment: "staging", deploymentStatus: "active", openClaimOnly: true, secretMarkerScan: "passed", files: builtFiles.map((file) => path.relative(dist, file)).sort() }, null, 2));

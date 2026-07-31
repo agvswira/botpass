@@ -23,6 +23,8 @@ There is no QR session, NFT, token ID, metadata renderer, or on-chain index arra
 
 The Mainnet workflow deploys the same functional bytecode but does not create, open, or claim an event. The Mainnet address will be added after deployment.
 
+Fresh Testnet contract: [`0x2ea9E965433D8f42F9C0caa8BC223335f8e14f6C`](https://scan.bohr.life/address/0x2ea9E965433D8f42F9C0caa8BC223335f8e14f6C)
+
 ## Local development
 
 ```bash
