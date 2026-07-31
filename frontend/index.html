@@ -3,23 +3,23 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Create events and record Open Claim attendance on BOT Chain." />
-    <meta name="theme-color" content="#102a72" />
+    <meta name="description" content="Create events, get passes, and verify attendance on BOT Chain." />
+    <meta name="theme-color" content="#12358b" />
     <link rel="canonical" href="https://botpass.online/" />
     <link rel="icon" href="./assets/botpass-mark.svg" type="image/svg+xml" />
-    <meta property="og:title" content="BOTPass | Open Claim event passes" />
+    <meta property="og:title" content="BOTPass | Verifiable event passes" />
     <meta property="og:description" content="Simple, verifiable event attendance on BOT Chain." />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://botpass.online/" />
     <meta property="og:image" content="https://botpass.online/assets/botpass-og.png" />
-    <title>BOTPass | Open Claim event passes</title>
+    <title>BOTPass | Verifiable event passes</title>
   </head>
   <body>
     <a class="skip-link" href="#main-content">Skip to main content</a>
     <header class="site-header">
       <a class="brand" href="./" data-link="home" aria-label="BOTPass home">
         <span class="brand-mark" aria-hidden="true">BP</span>
-        <span><strong>BOTPass</strong><small>Open Claim on BOT Chain</small></span>
+        <span><strong>BOTPass</strong><small>Event passes on BOT Chain</small></span>
       </a>
       <nav aria-label="Primary navigation">
         <a href="./" data-link="home">Events</a>
@@ -29,89 +29,107 @@
         <a href="./?verify" data-link="verify">Verify</a>
         <a href="./?guide" data-link="guide">How It Works</a>
       </nav>
-      <button id="connect-button" class="button secondary" type="button">Connect wallet</button>
+      <div class="wallet-control">
+        <button id="connect-button" class="button wallet-button" type="button" aria-haspopup="menu" aria-expanded="false">
+          <span id="wallet-button-label">Connect wallet</span>
+          <span class="wallet-chevron" aria-hidden="true">⌄</span>
+        </button>
+        <div id="wallet-menu" class="wallet-menu" role="menu" hidden>
+          <div class="wallet-identity">
+            <span>Connected wallet</span>
+            <strong id="wallet-address"></strong>
+          </div>
+          <button id="copy-wallet-button" type="button" role="menuitem">Copy address</button>
+          <button id="switch-wallet-button" type="button" role="menuitem">Switch account</button>
+          <button id="disconnect-wallet-button" type="button" role="menuitem">Disconnect from BOTPass</button>
+          <p>Disconnecting hides the wallet here. Your wallet extension may still remember this site.</p>
+        </div>
+      </div>
     </header>
 
     <main id="main-content">
-      <aside id="deployment-banner" class="banner" role="status" aria-live="polite">
-        <strong id="deployment-title">Loading BOTPass network status…</strong>
-        <span id="deployment-message"></span>
+      <aside id="deployment-banner" class="network-bar" role="status" aria-live="polite">
+        <span class="network-dot" aria-hidden="true"></span>
+        <div><strong id="deployment-title">Loading network status…</strong><span id="deployment-message"></span></div>
+        <a id="network-contract-link" href="https://scan.bohr.life" target="_blank" rel="noreferrer">View contract</a>
       </aside>
       <div id="transaction-status" class="transaction-status" role="status" aria-live="polite" hidden></div>
 
       <section class="page" data-page="home">
         <div class="hero">
-          <div>
-            <p class="eyebrow">BOT CHAIN EVENT REGISTRY</p>
-            <h1>One open claim.<br />One verifiable attendance record.</h1>
-            <p class="lead">Organizers create an event and open claims. Attendees connect a wallet and claim once. Anyone can verify the result directly from the contract.</p>
-            <div class="actions"><a class="button primary" href="./?create">Create an event</a><a class="button secondary" href="./?guide">See how it works</a></div>
+          <div class="hero-copy">
+            <p class="eyebrow">VERIFIABLE EVENT PASSES</p>
+            <h1>Event access that stays easy to verify.</h1>
+            <p class="lead">Create an event, make passes available, and let each attendee add one permanent record to their wallet address.</p>
+            <div class="actions"><a class="button primary" href="./?create">Create an event</a><a class="text-link" href="./?guide">See how it works <span aria-hidden="true">→</span></a></div>
           </div>
-          <div class="hero-card" aria-label="BOTPass Open Claim overview">
-            <span>OPEN CLAIM</span><strong>Simple by design.</strong>
-            <ol><li>Create</li><li>Open</li><li>Claim</li><li>Verify</li></ol>
+          <div class="hero-summary" aria-label="BOTPass overview">
+            <p class="summary-label">Built for clear event records</p>
+            <dl>
+              <div><dt>For attendees</dt><dd>Get pass once</dd></div>
+              <div><dt>For organizers</dt><dd>Control availability</dd></div>
+              <div><dt>For anyone</dt><dd>Verify on-chain</dd></div>
+            </dl>
           </div>
         </div>
-        <div class="section-heading"><div><p class="eyebrow">LATEST 100</p><h2>Events</h2></div><span id="event-count" class="chip">0 events</span></div>
-        <div id="home-events" class="card-grid"></div>
-        <div id="home-empty" class="empty"><h3>No events to show yet</h3><p>Once the Testnet deployment is activated, new events will appear here.</p></div>
+        <div class="section-heading"><div><p class="eyebrow">LATEST 100</p><h2>Events</h2></div><span id="event-count" class="count-label">0 events</span></div>
+        <div id="home-events" class="event-list"></div>
+        <div id="home-empty" class="empty"><h3>No events yet</h3><p>Created events will appear here as soon as they are recorded on BOT Chain.</p></div>
       </section>
 
       <section class="page" data-page="create" hidden>
-        <div class="page-heading"><p class="eyebrow">ORGANIZER</p><h1>Create an event</h1><p>Event details and dates are permanent after the transaction confirms. Claims start closed.</p></div>
+        <div class="page-heading"><p class="eyebrow">ORGANIZER</p><h1>Create an event</h1><p>Event details and dates are permanent after confirmation. Passes start paused, so you decide when attendees can get them.</p></div>
         <form id="create-form" class="panel form-grid">
           <label>Event name<input name="name" maxlength="100" required /></label>
           <label>Location<input name="location" maxlength="200" required /></label>
           <label class="wide">Description<textarea name="description" maxlength="500" rows="5" required></textarea></label>
           <label>Starts<input name="start" type="datetime-local" required /></label>
           <label>Ends<input name="end" type="datetime-local" required /></label>
-          <div class="wide form-actions"><button class="button primary" type="submit">Create event</button><span>One compact Open Claim registry</span></div>
+          <div class="wide form-actions"><button class="button primary" type="submit">Create event</button><span>Requires one wallet confirmation</span></div>
         </form>
       </section>
 
       <section class="page" data-page="manage" hidden>
-        <div class="page-heading"><p class="eyebrow">ORGANIZER</p><h1>Manage events</h1><p>Your events from the latest 100 contract records. Open or close claims at any time during the event window.</p></div>
-        <div id="manage-events" class="card-grid"></div>
+        <div class="page-heading"><p class="eyebrow">ORGANIZER</p><h1>Manage events</h1><p>View events created by the connected wallet and control when passes are available.</p></div>
+        <div id="manage-events" class="event-list"></div>
         <div id="manage-empty" class="empty"><h3>No organizer events found</h3><p>Connect the organizer wallet or create an event first.</p></div>
       </section>
 
       <section class="page" data-page="event" hidden>
-        <div id="event-detail" class="panel"></div>
+        <div id="event-detail" class="panel event-detail"></div>
       </section>
 
       <section class="page" data-page="passes" hidden>
-        <div class="page-heading"><p class="eyebrow">ATTENDEE</p><h1>My Passes</h1><p>Attendance claimed by the connected wallet across the latest 100 events.</p></div>
-        <div id="wallet-passes" class="card-grid"></div>
-        <div id="passes-empty" class="empty"><h3>No passes found</h3><p>Connect a wallet, open an event, and claim your first BOTPass.</p></div>
+        <div class="page-heading"><p class="eyebrow">YOUR WALLET</p><h1>My Passes</h1><p>Event passes recorded for the connected wallet across the latest 100 events.</p></div>
+        <div id="wallet-passes" class="pass-list"></div>
+        <div id="passes-empty" class="empty"><h3>No passes found</h3><p>Connect a wallet and choose Get pass from an available event.</p></div>
       </section>
 
       <section class="page" data-page="verify" hidden>
-        <div class="page-heading"><p class="eyebrow">PUBLIC CHECK</p><h1>Verify attendance</h1><p>Enter an event ID and wallet address. This is a read-only contract check and costs no gas.</p></div>
+        <div class="page-heading"><p class="eyebrow">PUBLIC CHECK</p><h1>Verify a pass</h1><p>Enter an event ID and wallet address. This read-only check costs no gas.</p></div>
         <form id="verify-form" class="panel verify-form">
           <label>Event ID<input name="eventId" inputmode="numeric" pattern="[1-9][0-9]*" required /></label>
           <label>Wallet address<input name="wallet" placeholder="0x…" required /></label>
-          <button class="button primary" type="submit">Verify</button>
+          <button class="button primary" type="submit">Verify pass</button>
         </form>
         <div id="verify-result" class="panel result" role="status" aria-live="polite" hidden></div>
       </section>
 
       <section class="page" data-page="guide" hidden>
-        <div class="page-heading"><p class="eyebrow">DOCUMENTATION</p><h1>How BOTPass works</h1><p>The main flow, organized in the same order as the product menu.</p></div>
-        <div class="guide-grid">
-          <article class="guide-card"><span>01</span><h2>Events</h2><p>Browse the latest 100 events stored in the BOTPass contract. Opening an event shows its organizer, schedule, claim status, and total pass count.</p></article>
-          <article class="guide-card"><span>02</span><h2>Create</h2><p>Connect an organizer wallet, add the event details and dates, then confirm one transaction. The event is created with claims closed.</p></article>
-          <article class="guide-card"><span>03</span><h2>Manage</h2><p>The organizer opens claims when attendees may join and closes them when claiming should stop. Only that event’s organizer can change this switch.</p></article>
-          <article class="guide-card"><span>04</span><h2>Open Claim</h2><p>An attendee opens the event, connects a wallet, and confirms one claim transaction. Each wallet can claim an event only once.</p></article>
-          <article class="guide-card"><span>05</span><h2>My Passes</h2><p>BOTPass scans the latest 100 events and lists every event the connected wallet has claimed, including the on-chain claim time.</p></article>
-          <article class="guide-card"><span>06</span><h2>Verify</h2><p>Anyone can check an event ID and wallet address. A timestamp means the claim exists; zero means that wallet has not claimed that event.</p></article>
+        <div class="page-heading"><p class="eyebrow">DOCUMENTATION</p><h1>How BOTPass works</h1><p>The main flow follows the same order as the product menu.</p></div>
+        <div class="guide-flow">
+          <article class="guide-step"><span>01</span><div><h2>Events</h2><p>Browse the latest 100 events, open the event you want, and select Get pass while passes are available. Each wallet can hold one pass per event.</p></div></article>
+          <article class="guide-step"><span>02</span><div><h2>Create</h2><p>Connect an organizer wallet, enter the event details and dates, then confirm the transaction. The new event starts with passes paused.</p></div></article>
+          <article class="guide-step"><span>03</span><div><h2>Manage</h2><p>Only the wallet that created an event can enable or pause its passes. The controls appear automatically when that organizer wallet is connected.</p></div></article>
+          <article class="guide-step"><span>04</span><div><h2>My Passes</h2><p>Connect a wallet to see its recorded event passes and the time each pass was added.</p></div></article>
+          <article class="guide-step"><span>05</span><div><h2>Verify</h2><p>Anyone can check an event ID and wallet address. BOTPass reads the contract and shows whether a pass exists.</p></div></article>
         </div>
-        <aside class="note"><strong>Open Claim vs. the removed QR flow</strong><p>Open Claim uses no signed QR session. It is cheaper and simpler: the organizer controls one open/closed switch, while the contract still prevents duplicate claims.</p></aside>
       </section>
     </main>
 
     <footer class="site-footer">
-      <div><strong>BOTPass</strong><p>Functional Open Claim infrastructure on BOT Chain.</p></div>
-      <div><span>Testnet demo · Mainnet contract shown after deployment</span><a id="contract-link" href="https://scan.bohr.life" target="_blank" rel="noreferrer">BOTScan</a></div>
+      <div><strong>BOTPass</strong><p>Verifiable event passes on BOT Chain.</p></div>
+      <div><span>BOT Chain Testnet</span><a id="contract-link" href="https://scan.bohr.life" target="_blank" rel="noreferrer">View on BOTScan</a></div>
     </footer>
     <script type="module" src="./src/app.js"></script>
   </body>

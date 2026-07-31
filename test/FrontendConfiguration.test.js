@@ -81,6 +81,10 @@ describe("BOTPass frontend configuration", function () {
       mobileFooterAnchored: true,
       scanLimit: 100,
       guideFollowsMenu: true,
+      publicTerminology: "pass",
+      currentFlowOnly: true,
+      functionalLayout: true,
+      statusPresentation: "inline",
     });
   });
 });

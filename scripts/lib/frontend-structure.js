@@ -32,11 +32,19 @@ function validateFrontendStructure(projectRoot) {
   requirePattern(css, /body\s*\{[^}]*min-height:100vh/i, "Application shell must fill the viewport");
   requirePattern(css, /\.site-footer\s*\{[^}]*align-self:end/i, "Footer must remain at the bottom of short routes");
   requirePattern(css, /:focus-visible\s*\{[^}]*outline:3px solid #f59e0b/i, "Visible high-contrast focus styling is required");
-  for (const requiredCopy of ["Open Claim", "My Passes", "How BOTPass works", "Verify attendance", "latest 100"]) {
+  requirePattern(css, /\.event-list\s*,\s*\.pass-list\s*\{[^}]*display:grid/i, "Event and pass routes must use functional list layouts");
+  requirePattern(css, /\.availability\s*\{[^}]*display:inline-flex/i, "Event availability must use an inline status treatment");
+  for (const requiredCopy of ["Get pass", "Passes available", "My Passes", "How BOTPass works", "Verify a pass", "latest 100"]) {
     if (!html.toLowerCase().includes(requiredCopy.toLowerCase())) throw new Error(`Missing required product copy: ${requiredCopy}`);
   }
-  for (const forbidden of ["QR Claim", "claimWithSession", "token ID", "NFT", "Soulbound"]) {
-    if (html.includes(forbidden)) throw new Error(`Removed QR/NFT product copy remains: ${forbidden}`);
+  for (const [pattern, label] of [
+    [/\bclaims?(?:ed|ing)?\b/i, "claim terminology"],
+    [/\bQR\b/i, "QR terminology"],
+    [/\bremoved\b/i, "removed-flow comparison"],
+    [/previous deployment/i, "deployment history"],
+    [/claimWithSession|token ID|NFT|Soulbound/, "retired protocol terminology"],
+  ]) {
+    if (pattern.test(html)) throw new Error(`Public interface contains ${label}`);
   }
   return {
     routeHooks: [...ROUTE_HOOKS],
@@ -47,6 +55,10 @@ function validateFrontendStructure(projectRoot) {
     mobileFooterAnchored: true,
     scanLimit: 100,
     guideFollowsMenu: true,
+    publicTerminology: "pass",
+    currentFlowOnly: true,
+    functionalLayout: true,
+    statusPresentation: "inline",
   };
 }
 

@@ -7,9 +7,42 @@ import {
 
 let boundProvider = null;
 let boundHandlers = null;
+const DISCONNECTED_KEY = "botpass.walletDisconnected";
 
 function defaultHost() {
   return typeof window === "undefined" ? globalThis : window;
+}
+
+function defaultStorage() {
+  try {
+    return defaultHost()?.sessionStorage ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export function isWalletDisconnected(storage = defaultStorage()) {
+  try {
+    return storage?.getItem(DISCONNECTED_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+export function markWalletDisconnected(storage = defaultStorage()) {
+  try {
+    storage?.setItem(DISCONNECTED_KEY, "true");
+  } catch {
+    // A blocked storage API must not prevent a local disconnect.
+  }
+}
+
+export function clearWalletDisconnected(storage = defaultStorage()) {
+  try {
+    storage?.removeItem(DISCONNECTED_KEY);
+  } catch {
+    // A blocked storage API must not prevent an explicit connection.
+  }
 }
 
 export function getInjectedProvider(host = defaultHost()) {
@@ -94,6 +127,36 @@ export async function switchOrAddBotChain({
     );
   }
   return snapshot;
+}
+
+function isUnsupportedPermissionRequest(error) {
+  return error?.code === -32601 || error?.code === 4200;
+}
+
+export async function requestWalletAccountSwitch({
+  provider = getInjectedProvider(),
+} = {}) {
+  if (!provider?.request) {
+    throw new Error("No EIP-1193 wallet provider is available");
+  }
+
+  try {
+    await provider.request({
+      method: "wallet_requestPermissions",
+      params: [{ eth_accounts: {} }],
+    });
+  } catch (error) {
+    if (!isUnsupportedPermissionRequest(error)) throw error;
+    return {
+      supported: false,
+      snapshot: await readWalletSnapshot({ provider }),
+    };
+  }
+
+  return {
+    supported: true,
+    snapshot: await readWalletSnapshot({ provider }),
+  };
 }
 
 export function bindWalletEvents({

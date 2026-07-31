@@ -20,14 +20,14 @@ function files(directory) {
 const index = fs.readFileSync(indexPath, "utf8");
 for (const marker of [
   'rel="canonical" href="https://botpass.online/"',
-  "Open Claim event passes",
+  "Verifiable event passes",
   "How BOTPass works",
   "My Passes",
 ]) if (!index.includes(marker)) throw new Error(`Built page is missing ${marker}`);
 
 const builtFiles = files(dist);
 const bundle = builtFiles.filter((file) => /\.(html|js|css)$/.test(file)).map((file) => fs.readFileSync(file, "utf8")).join("\n");
-for (const marker of ["https://rpc.bohr.life", "https://scan.bohr.life", "getEvent(uint256)", "claimOpen", "claimedAt", "Live Testnet demo", "0x2ea9E965433D8f42F9C0caa8BC223335f8e14f6C"]) {
+for (const marker of ["https://rpc.bohr.life", "https://scan.bohr.life", "getEvent(uint256)", "claimOpen", "claimedAt", "BOT Chain Testnet", "0x2ea9E965433D8f42F9C0caa8BC223335f8e14f6C"]) {
   if (!bundle.includes(marker)) throw new Error(`Built bundle is missing ${marker}`);
 }
 for (const forbidden of [

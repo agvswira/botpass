@@ -4,8 +4,8 @@ import BOTPASS_ABI from "./abi/BOTPass.json" with { type: "json" };
 const contractInterface = new Interface(BOTPASS_ABI);
 
 const CONTRACT_MESSAGES = Object.freeze({
-  AlreadyClaimed: "This wallet already claimed this event.",
-  ClaimClosed: "The organizer has closed claims for this event.",
+  AlreadyClaimed: "This wallet already has a pass for this event.",
+  ClaimClosed: "Passes are currently paused by the organizer.",
   EmptyField: "Every event metadata field is required.",
   EndTimeNotFuture: "The event end must be in the future.",
   EventEnded: "This event has ended.",

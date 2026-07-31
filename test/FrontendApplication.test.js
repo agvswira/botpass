@@ -22,6 +22,40 @@ function event(organizer, name = "Event") {
 }
 
 describe("BOTPass frontend application services", function () {
+  it("derives attendee-facing pass availability from the event window", async function () {
+    const { getEventAvailability } = await importModule("frontend/src/pass/controller.mjs");
+    const active = event("0x1111111111111111111111111111111111111111");
+
+    expect(getEventAvailability(active, 1_799_999_999n)).to.deep.include({
+      key: "upcoming",
+      label: "Upcoming",
+      canGetPass: false,
+    });
+    expect(getEventAvailability(active, 1_800_000_001n)).to.deep.include({
+      key: "available",
+      label: "Passes available",
+      canGetPass: true,
+    });
+    expect(getEventAvailability({ ...active, claimOpen: false }, 1_800_000_001n)).to.deep.include({
+      key: "paused",
+      label: "Passes paused",
+      canGetPass: false,
+    });
+    expect(getEventAvailability(active, 1_800_003_601n)).to.deep.include({
+      key: "ended",
+      label: "Ended",
+      canGetPass: false,
+    });
+  });
+
+  it("recognizes organizer controls without address-case ambiguity", async function () {
+    const { isEventOrganizer } = await importModule("frontend/src/pass/controller.mjs");
+    const organizer = "0xAbCdEf0000000000000000000000000000000000";
+    expect(isEventOrganizer({ organizer }, organizer.toLowerCase())).to.equal(true);
+    expect(isEventOrganizer({ organizer }, "0x1111111111111111111111111111111111111111")).to.equal(false);
+    expect(isEventOrganizer({ organizer }, null)).to.equal(false);
+  });
+
   it("reads the canonical getEvent signature without NFT fields", async function () {
     const { readEventFromContract } = await importModule("frontend/src/contract.js");
     const calls = [];
@@ -105,5 +139,60 @@ describe("BOTPass frontend application services", function () {
     const snapshot = await switchOrAddBotChain({ provider });
     expect(snapshot.chainId).to.equal(968);
     expect(calls).to.include("wallet_addEthereumChain");
+  });
+
+  it("requests an account choice and returns the selected wallet snapshot", async function () {
+    const { requestWalletAccountSwitch } = await importModule("frontend/src/wallet.js");
+    const calls = [];
+    const provider = {
+      request: async ({ method, params }) => {
+        calls.push({ method, params });
+        if (method === "wallet_requestPermissions") return [{ parentCapability: "eth_accounts" }];
+        if (method === "eth_accounts") return ["0x2222222222222222222222222222222222222222"];
+        if (method === "eth_chainId") return "0x3c8";
+        return null;
+      },
+    };
+
+    const result = await requestWalletAccountSwitch({ provider });
+    expect(result.supported).to.equal(true);
+    expect(result.snapshot).to.include({
+      account: "0x2222222222222222222222222222222222222222",
+      chainId: 968,
+    });
+    expect(calls[0]).to.deep.equal({
+      method: "wallet_requestPermissions",
+      params: [{ eth_accounts: {} }],
+    });
+  });
+
+  it("keeps an explicit BOTPass disconnect local and reversible", async function () {
+    const {
+      clearWalletDisconnected,
+      isWalletDisconnected,
+      markWalletDisconnected,
+    } = await importModule("frontend/src/wallet.js");
+    const values = new Map();
+    const storage = {
+      getItem: (key) => values.get(key) ?? null,
+      removeItem: (key) => values.delete(key),
+      setItem: (key, value) => values.set(key, value),
+    };
+
+    expect(isWalletDisconnected(storage)).to.equal(false);
+    markWalletDisconnected(storage);
+    expect(isWalletDisconnected(storage)).to.equal(true);
+    clearWalletDisconnected(storage);
+    expect(isWalletDisconnected(storage)).to.equal(false);
+  });
+
+  it("maps contract errors to pass language for attendees", async function () {
+    const { describeError } = await importModule("frontend/src/errors.js");
+    expect(describeError({ code: "AlreadyClaimed" }).message).to.equal(
+      "This wallet already has a pass for this event."
+    );
+    expect(describeError({ code: "ClaimClosed" }).message).to.equal(
+      "Passes are currently paused by the organizer."
+    );
   });
 });
