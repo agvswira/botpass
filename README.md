@@ -25,6 +25,8 @@ The Mainnet workflow deploys the same functional bytecode but does not create, o
 
 Fresh Testnet contract: [`0x2ea9E965433D8f42F9C0caa8BC223335f8e14f6C`](https://scan.bohr.life/address/0x2ea9E965433D8f42F9C0caa8BC223335f8e14f6C)
 
+Fresh Testnet demo event: [event #1](https://scan.bohr.life/address/0x2ea9E965433D8f42F9C0caa8BC223335f8e14f6C) is created with Open Claim enabled. Its canonical transaction receipts are recorded in `deployments/968-demo.json`.
+
 ## Local development
 
 ```bash

@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "networkName": "BOT Chain Testnet",
+  "chainId": 968,
+  "contractAddress": "0x2ea9E965433D8f42F9C0caa8BC223335f8e14f6C",
+  "organizerAddress": "0xe604829a9c327b0d924718CfAcEF69BBdC8C0Efc",
+  "eventId": 1,
+  "eventName": "BOTPass Open Claim Demo",
+  "creation": {
+    "transactionHash": "0xcc12d8b00f1f6e29ab6a21b7377a32670b984f592d266f00ff14457d5be69ff2",
+    "blockNumber": 18236755,
+    "timestampUtc": "2026-07-31T15:40:14.000Z",
+    "gasUsed": "209289",
+    "status": 1
+  },
+  "openClaims": {
+    "transactionHash": "0x34960e810f07ac4897e99bd1c4f6d9e907ea77063bf09baea5226ba3e6a2b10c",
+    "blockNumber": 18237060,
+    "timestampUtc": "2026-07-31T15:44:03.000Z",
+    "gasUsed": "32632",
+    "status": 1
+  },
+  "observedState": {
+    "eventCount": "1",
+    "claimOpen": true,
+    "passCount": "0"
+  }
+}
