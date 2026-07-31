@@ -29,6 +29,7 @@ const {
   executeTestnetDemo,
 } = require("../scripts/lib/demo-events");
 const { createSigner } = require("../scripts/deploy");
+const { blockingSourceChanges } = require("../scripts/lib/project");
 
 describe("BOTPass deployment safety", function () {
   const projectRoot = path.resolve(__dirname, "..");
@@ -38,6 +39,18 @@ describe("BOTPass deployment safety", function () {
 
   before(function () {
     frozen = loadFrozenArtifact(projectRoot);
+  });
+
+  it("permits only the two protected local reference documents", function () {
+    expect(
+      blockingSourceChanges(
+        "?? docs/bot-chain-developer-documentation.md\n" +
+          "?? docs/hackathon-guidebook-botchain-build-week.md"
+      )
+    ).to.deep.equal([]);
+    expect(blockingSourceChanges(" M contracts/BOTPass.sol")).to.deep.equal([
+      " M contracts/BOTPass.sol",
+    ]);
   });
 
   function harness({

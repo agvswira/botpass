@@ -2,6 +2,11 @@
 
 const { execFileSync } = require("node:child_process");
 
+const ALLOWED_LOCAL_UNTRACKED_PATHS = Object.freeze([
+  "docs/bot-chain-developer-documentation.md",
+  "docs/hackathon-guidebook-botchain-build-week.md",
+]);
+
 function runGit(args, cwd) {
   return execFileSync("git", args, {
     cwd,
@@ -18,12 +23,23 @@ function getSourceCommit(cwd) {
   return commit;
 }
 
+function blockingSourceChanges(status) {
+  return status
+    .split("\n")
+    .filter(Boolean)
+    .filter((line) => {
+      if (!line.startsWith("?? ")) return true;
+      return !ALLOWED_LOCAL_UNTRACKED_PATHS.includes(line.slice(3));
+    });
+}
+
 function assertTrackedSourceClean(deploymentName = "Testnet", cwd) {
   const status = runGit(
     ["status", "--porcelain", "--untracked-files=all"],
     cwd
   );
-  if (status) {
+  const blocking = blockingSourceChanges(status);
+  if (blocking.length) {
     throw new Error(
       `The source tree has staged, unstaged, or untracked changes; commit and review it before ${deploymentName} deployment`
     );
@@ -49,6 +65,8 @@ async function getBytecodeSizes(hre) {
 }
 
 module.exports = {
+  ALLOWED_LOCAL_UNTRACKED_PATHS,
+  blockingSourceChanges,
   assertTrackedSourceClean,
   getBytecodeSizes,
   getCompilerSettings,
