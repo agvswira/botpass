@@ -29,6 +29,7 @@ const {
   executeTestnetDemo,
 } = require("../scripts/lib/demo-events");
 const { createSigner } = require("../scripts/deploy");
+const { withProvider } = require("../scripts/demo-events");
 const { blockingSourceChanges } = require("../scripts/lib/project");
 
 describe("BOTPass deployment safety", function () {
@@ -338,5 +339,19 @@ describe("BOTPass deployment safety", function () {
       log: () => {},
     });
     expect(result).to.include({ eventId: "1", organizer, claimOpen: true });
+  });
+
+  it("keeps the Testnet provider alive until asynchronous setup settles", async function () {
+    let destroyed = false;
+    const value = await withProvider(
+      { destroy: () => { destroyed = true; } },
+      async () => {
+        await Promise.resolve();
+        expect(destroyed).to.equal(false);
+        return "settled";
+      }
+    );
+    expect(value).to.equal("settled");
+    expect(destroyed).to.equal(true);
   });
 });
