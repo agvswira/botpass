@@ -1,5 +1,6 @@
 "use strict";
 
+const fs = require("node:fs");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
 const { expect } = require("chai");
@@ -7,6 +8,31 @@ const { expect } = require("chai");
 const projectRoot = path.resolve(__dirname, "..");
 const importModule = (relativePath) =>
   import(pathToFileURL(path.join(projectRoot, relativePath)).href);
+
+class TestElement {
+  constructor(tagName) {
+    this.tagName = tagName;
+    this.children = [];
+    this.dataset = {};
+    this.attributes = {};
+    this.textContent = "";
+  }
+
+  append(...children) {
+    this.children.push(...children);
+  }
+
+  setAttribute(name, value) {
+    this.attributes[name] = value;
+  }
+}
+
+function descendants(node, tagName) {
+  return node.children.flatMap((child) => [
+    ...(child.tagName === tagName ? [child] : []),
+    ...descendants(child, tagName),
+  ]);
+}
 
 function event(organizer, name = "Event") {
   return {
@@ -22,6 +48,92 @@ function event(organizer, name = "Event") {
 }
 
 describe("BOTPass frontend application services", function () {
+  it("keeps event routes as semantic lists with an anchored page shell", function () {
+    const html = fs.readFileSync(path.join(projectRoot, "frontend/index.html"), "utf8");
+    expect(html).to.match(/<ul\s+id="home-events"\s+class="event-list"[^>]*><\/ul>/i);
+    expect(html).to.match(/<ul\s+id="manage-events"\s+class="event-list"[^>]*><\/ul>/i);
+  });
+
+  it("orders event rows by lifecycle and gives each lifecycle its contextual action", async function () {
+    const {
+      formatEventTimeRange,
+      getEventListCta,
+      sortEventsByLifecycle,
+    } = await importModule("frontend/src/pass/controller.mjs");
+    const organizer = "0x1111111111111111111111111111111111111111";
+    const now = 1_800_000_000n;
+    const events = [
+      { ...event(organizer, "Ended"), id: 11n, endTime: now - 1n },
+      { ...event(organizer, "Available first"), id: 2n, startTime: now - 1n, endTime: now + 1_000n },
+      { ...event(organizer, "Paused"), id: 9n, claimOpen: false, startTime: now - 1n, endTime: now + 1_000n },
+      { ...event(organizer, "Upcoming"), id: 8n, startTime: now + 1n, endTime: now + 1_000n },
+      { ...event(organizer, "Available second"), id: 5n, startTime: now - 1n, endTime: now + 1_000n },
+    ];
+
+    expect(sortEventsByLifecycle(events, now).map(({ id }) => id)).to.deep.equal([
+      5n,
+      2n,
+      8n,
+      9n,
+      11n,
+    ]);
+    expect(getEventListCta({ key: "available" })).to.equal("View & get pass");
+    expect(getEventListCta({ key: "upcoming" })).to.equal("View details");
+    expect(getEventListCta({ key: "paused" })).to.equal("View details");
+    expect(getEventListCta({ key: "ended" })).to.equal("View details");
+    expect(getEventListCta({ key: "available" }, { manage: true })).to.equal("Manage event");
+    expect(formatEventTimeRange(1_800_000_000n, 1_800_003_600n)).to.match(/\d.*–.*\d/);
+  });
+
+  it("maps every event row field to a readable labeled value", async function () {
+    const { getEventListRowData } = await importModule("frontend/src/pass/controller.mjs");
+    const row = getEventListRowData(
+      {
+        ...event("0x1111111111111111111111111111111111111111", "Open studio"),
+        id: 42n,
+      },
+      { now: 1_800_000_001n }
+    );
+
+    expect(row).to.include({
+      lifecycle: "Passes available",
+      eventId: "Event #42",
+      title: "Open studio",
+      action: "View & get pass",
+    });
+    expect(row.metadata.map(({ label }) => label)).to.deep.equal([
+      "When",
+      "Where",
+      "Organizer",
+      "Passes",
+    ]);
+    expect(row.metadata[0].value).to.match(/\d.*–.*\d/);
+    expect(row.metadata[1].value).to.equal("Makassar");
+    expect(row.metadata[2].value).to.equal("0x1111…1111");
+    expect(row.metadata[3].value).to.equal("2 passes issued");
+  });
+
+  it("renders each event as one semantic row with one contextual link", async function () {
+    const { renderEventListRow } = await importModule("frontend/src/pass/controller.mjs");
+    const previousDocument = global.document;
+    global.document = { createElement: (tagName) => new TestElement(tagName) };
+    try {
+      const row = renderEventListRow(
+        { ...event("0x1111111111111111111111111111111111111111"), id: 7n },
+        { now: 1_800_000_001n }
+      );
+      const links = descendants(row, "a");
+      const labels = descendants(row, "dt").map(({ textContent }) => textContent);
+
+      expect(row.tagName).to.equal("li");
+      expect(links).to.have.length(1);
+      expect(links[0].textContent).to.equal("View & get pass");
+      expect(labels).to.deep.equal(["When", "Where", "Organizer", "Passes"]);
+    } finally {
+      global.document = previousDocument;
+    }
+  });
+
   it("derives attendee-facing pass availability from the event window", async function () {
     const { getEventAvailability, getNextLifecycleRefreshDelay, getPassActionState } = await importModule("frontend/src/pass/controller.mjs");
     const active = event("0x1111111111111111111111111111111111111111");
@@ -75,7 +187,7 @@ describe("BOTPass frontend application services", function () {
       "BOTPass Open Claim Demo with QR code and previous deployment notes"
     );
     expect(rendered).to.equal(
-      "BOTPass event pass Demo with check-in code and network notes"
+      "BOTPass Attendance Demo with check-in code and network notes"
     );
     expect(rendered).not.to.match(/claim|\bQR\b|previous deployment/i);
   });

@@ -28,9 +28,15 @@ const formatDate = (value) =>
     .format(new Date(Number(value) * 1000));
 const shortAddress = (value) => `${value.slice(0, 6)}…${value.slice(-4)}`;
 
+export function formatEventTimeRange(startTime, endTime) {
+  return `${formatDate(startTime)} – ${formatDate(endTime)}`;
+}
+
 export function toPublicEventCopy(value) {
   return String(value)
-    .replace(/\bopen claims?\b/gi, "event pass")
+    .replace(/\bBOTPass open claims? demo\b/gi, "BOTPass Attendance Demo")
+    .replace(/\bFunctional open claims? acceptance event\b/gi, "Live attendance-pass demo")
+    .replace(/\bopen claims?\b/gi, "pass availability")
     .replace(/\bclaiming\b/gi, "getting a pass")
     .replace(/\bclaimed\b/gi, "added a pass")
     .replace(/\bclaims\b/gi, "passes")
@@ -72,6 +78,46 @@ export function getEventAvailability(event, now) {
     label: "Passes available",
     canGetPass: true,
     reason: "Connect a wallet and confirm one transaction.",
+  };
+}
+
+const LIFECYCLE_RANK = Object.freeze({
+  available: 0,
+  upcoming: 1,
+  paused: 2,
+  ended: 3,
+});
+
+export function sortEventsByLifecycle(events, now) {
+  return [...events].sort((left, right) => {
+    const lifecycleDifference =
+      LIFECYCLE_RANK[getEventAvailability(left, now).key] -
+      LIFECYCLE_RANK[getEventAvailability(right, now).key];
+    if (lifecycleDifference !== 0) return lifecycleDifference;
+    return left.id === right.id ? 0 : left.id > right.id ? -1 : 1;
+  });
+}
+
+export function getEventListCta(availability, { manage = false } = {}) {
+  if (manage) return "Manage event";
+  return availability.key === "available" ? "View & get pass" : "View details";
+}
+
+export function getEventListRowData(event, { manage = false, now } = {}) {
+  const availability = getEventAvailability(event, now);
+  return {
+    lifecycle: availability.label,
+    lifecycleKey: availability.key,
+    eventId: `Event #${event.id}`,
+    title: toPublicEventCopy(event.name),
+    description: toPublicEventCopy(event.description),
+    metadata: [
+      { label: "When", value: formatEventTimeRange(event.startTime, event.endTime) },
+      { label: "Where", value: toPublicEventCopy(event.location) },
+      { label: "Organizer", value: shortAddress(event.organizer) },
+      { label: "Passes", value: `${event.passCount} passes issued` },
+    ],
+    action: getEventListCta(availability, { manage }),
   };
 }
 
@@ -148,27 +194,26 @@ function setListState(container, state, title, message) {
   container.setAttribute("aria-busy", String(state === "loading"));
 }
 
-function eventCard(event, { manage = false, now } = {}) {
-  const availability = getEventAvailability(event, now);
-  const card = element("article", "event-card");
+export function renderEventListRow(event, { manage = false, now } = {}) {
+  const row = getEventListRowData(event, { manage, now });
+  const card = element("li", "event-row");
   const cardHeader = element("div", "event-card-header");
   cardHeader.append(
-    availabilityIndicator(availability),
-    element("span", "event-id", `Event #${event.id}`)
+    availabilityIndicator({ key: row.lifecycleKey, label: row.lifecycle }),
+    element("span", "event-id", row.eventId)
   );
   const content = element("div", "event-card-content");
   content.append(
-    element("h3", "", toPublicEventCopy(event.name)),
-    element("p", "", toPublicEventCopy(event.description))
+    element("h3", "", row.title),
+    element("p", "", row.description)
   );
-  const metadata = element("div", "event-metadata");
-  metadata.append(
-    element("span", "", toPublicEventCopy(event.location)),
-    element("span", "", formatDate(event.startTime)),
-    element("span", "", `Organizer ${shortAddress(event.organizer)}`),
-    element("span", "", `${event.passCount} passes issued`)
-  );
-  const link = element("a", "event-card-link", manage ? "Manage event" : "View event");
+  const metadata = element("dl", "event-metadata");
+  row.metadata.forEach(({ label, value }) => {
+    const item = element("div", "event-metadata-item");
+    item.append(element("dt", "", label), element("dd", "", value));
+    metadata.append(item);
+  });
+  const link = element("a", "event-card-link", row.action);
   link.href = `./?event=${event.id}`;
   link.append(element("span", "", " →"));
   card.append(cardHeader, content, metadata, link);
@@ -274,7 +319,7 @@ export function createAppController() {
 
   async function requireWriteContract() {
     if (!FRONTEND_CONFIG.writesEnabled) {
-      throw new Error("BOTPass writes are enabled only for the interactive Testnet demo.");
+      throw new Error("BOTPass actions are unavailable until this deployment is active and reviewed.");
     }
     if (!wallet.account) await connect();
     if (wallet.chainId !== FRONTEND_CONFIG.chainId) Object.assign(wallet, await switchOrAddBotChain());
@@ -315,8 +360,9 @@ export function createAppController() {
         : await readLatestEventsFromContract(readContract);
       if (generation !== routeRenderGeneration) return null;
       container.replaceChildren();
-      events.forEach((event) => container.append(eventCard(event, { manage: Boolean(filter), now })));
-      return events;
+      const sortedEvents = sortEventsByLifecycle(events, now);
+      sortedEvents.forEach((event) => container.append(renderEventListRow(event, { manage: Boolean(filter), now })));
+      return sortedEvents;
     } catch (error) {
       if (generation !== routeRenderGeneration) return null;
       setListState(container, "error", "Events could not be loaded", "Refresh the page to retry.");
@@ -430,10 +476,15 @@ export function createAppController() {
     });
     const head = element("div", "detail-head");
     const heading = element("div");
+    const description = element("div", "event-description");
+    description.append(
+      element("span", "event-description-label", "About this event"),
+      element("p", "", toPublicEventCopy(event.description))
+    );
     heading.append(
       element("p", "eyebrow", `EVENT #${event.id}`),
       element("h1", "", toPublicEventCopy(event.name)),
-      element("p", "lead", toPublicEventCopy(event.description))
+      description
     );
     head.append(heading, availabilityIndicator(availability));
     const facts = element("dl", "facts");
@@ -441,7 +492,7 @@ export function createAppController() {
     const attendeePanel = element("div", "event-action-panel");
     const attendeeCopy = element("div");
     attendeeCopy.append(
-      element("h2", "", hasPass ? "Pass added" : "Get your event pass"),
+      element("h2", "", hasPass ? "Attendance recorded" : "Record your attendance"),
       element(
         "p",
         "action-note",
@@ -588,13 +639,14 @@ export function createAppController() {
   async function initialize() {
     showRoute();
     const active = hasActiveDeployment();
-    const banner = document.querySelector("#deployment-banner");
-    banner.dataset.state = active ? "active" : "pending";
-    document.querySelector("#deployment-title").textContent = active ? "BOT Chain Testnet" : "Contract unavailable";
-    document.querySelector("#deployment-message").textContent = active ? `Contract ${shortAddress(FRONTEND_CONFIG.contractAddress)} · Chain ${FRONTEND_CONFIG.chainId}` : "Read and write actions are unavailable.";
     const contractUrl = active ? `${FRONTEND_CONFIG.explorerUrl}/address/${FRONTEND_CONFIG.contractAddress}` : FRONTEND_CONFIG.explorerUrl;
-    document.querySelector("#contract-link").href = contractUrl;
-    document.querySelector("#network-contract-link").href = contractUrl;
+    const contractLink = document.querySelector("#contract-link");
+    const faucetLink = document.querySelector("#faucet-link");
+    document.querySelector("#footer-network-name").textContent = FRONTEND_CONFIG.networkName;
+    contractLink.href = contractUrl;
+    contractLink.hidden = !active;
+    faucetLink.hidden = !FRONTEND_CONFIG.faucetUrl;
+    if (FRONTEND_CONFIG.faucetUrl) faucetLink.href = FRONTEND_CONFIG.faucetUrl;
     document.querySelector("#connect-button").disabled = !active;
     document.querySelector("#create-form button[type=submit]").disabled =
       !FRONTEND_CONFIG.writesEnabled;
@@ -623,12 +675,11 @@ export function createAppController() {
           onChainChanged: refreshWallet,
         });
       } catch (error) {
-        banner.dataset.state = "pending";
-        document.querySelector("#deployment-title").textContent = "BOT Chain RPC unavailable";
-        document.querySelector("#deployment-message").textContent = "Contract data could not be loaded. Refresh to retry.";
         showError(error);
       }
       updateWallet();
+    } else {
+      setStatus(`BOTPass is not active on ${FRONTEND_CONFIG.networkName} yet.`);
     }
     try {
       await renderRoute();
