@@ -4,6 +4,8 @@ BOTPass is an on-chain event attendance-pass registry on BOT Chain: organizers c
 
 **Live site:** [botpass.online](https://botpass.online/)
 
+**Mainnet contract:** [`0x41fc0234A8f94482168B063FDE7ABE67043E68A4`](https://scan.botchain.ai/address/0x41fc0234A8f94482168B063FDE7ABE67043E68A4) on BOT Chain Mainnet (chain ID 677), with fully verified source code on BOTScan.
+
 ## Product flow
 
 - **Events** — browse events and select **Get pass** while passes are available.
@@ -22,7 +24,7 @@ BOTPass is an on-chain event attendance-pass registry on BOT Chain: organizers c
 
 ## Networks and evidence
 
-The Mainnet contract is [`0x41fc0234A8f94482168B063FDE7ABE67043E68A4`](https://scan.botchain.ai/address/0x41fc0234A8f94482168B063FDE7ABE67043E68A4) on BOT Chain Mainnet (chain ID 677). Its confirmed receipt and exact runtime-bytecode evidence are committed in [`deployments/677.json`](deployments/677.json), and its Solidity source is fully verified on BOTScan. No event was created and no contract function was exercised on Mainnet after deployment.
+The Mainnet deployment's confirmed receipt, compiler settings, and exact runtime-bytecode evidence are committed in [`deployments/677.json`](deployments/677.json). No event was created and no contract function was exercised on Mainnet after deployment.
 
 The Testnet preview contract is [`0x2ea9E965433D8f42F9C0caa8BC223335f8e14f6C`](https://scan.bohr.life/address/0x2ea9E965433D8f42F9C0caa8BC223335f8e14f6C) on BOT Chain Testnet (chain ID 968). Its deployment receipt is committed in [`deployments/968.json`](deployments/968.json); Event ID 1 creation and pass-availability receipt evidence are committed in [`deployments/968-demo.json`](deployments/968-demo.json).
 
@@ -30,15 +32,20 @@ Production builds use the reviewed Mainnet deployment by default. To generate th
 
 ## Local verification
 
+Requires Node.js 24 (see [`.nvmrc`](.nvmrc)). Install the exact dependency versions from the committed lockfile, then run every verification gate:
+
 ```bash
-npm install
+npm ci
 npm test
 npm run integration:local
 npm run frontend:build
 npm run frontend:validate
 npm run frontend:validate:a11y
+npm run frontend:validate:dist
 npm run repository:validate
 ```
+
+Copy [`.env.example`](.env.example) to `.env` only when running network preflight or deployment commands. Keep deployer keys local; `.env` files are ignored by Git.
 
 ## Guarded deployment workflow
 
@@ -64,5 +71,15 @@ npm run deploy:mainnet
 ```
 
 The Mainnet prompt accepts only `DEPLOY BOTPASS TO BOT CHAIN MAINNET 677`. Deployment is capped at 1,400,000 gas, with a complete Mainnet budget of 0.0389 BOT and a 25% safety buffer.
+
+## Project structure
+
+- [`contracts/BOTPass.sol`](contracts/BOTPass.sol) — canonical Solidity contract.
+- [`frontend/`](frontend/) — static Vite application deployed to GitHub Pages.
+- [`scripts/`](scripts/) — guarded deployment, verification, generation, and validation tools.
+- [`test/`](test/) — contract, deployment-safety, integration, frontend, and repository tests.
+- [`deployments/`](deployments/) — immutable deployment and transaction evidence.
+
+Release history is available in [`CHANGELOG.md`](CHANGELOG.md).
 
 License: MIT.
