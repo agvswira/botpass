@@ -66,7 +66,6 @@ function validatePagesBuild(projectRoot = PROJECT_ROOT) {
       "Verifiable event passes",
       "How BOTPass works",
       "My Passes",
-      "Loading network status…",
       "Loading network…",
     ],
     "Built page"

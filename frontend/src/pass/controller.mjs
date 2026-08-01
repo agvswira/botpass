@@ -103,18 +103,22 @@ export function getEventListCta(availability, { manage = false } = {}) {
   return availability.key === "available" ? "View & get pass" : "View details";
 }
 
+export function formatEventId(value) {
+  return `Event ID: ${value}`;
+}
+
 export function getEventListRowData(event, { manage = false, now } = {}) {
   const availability = getEventAvailability(event, now);
   const passCount = event.passCount.toString();
   return {
     lifecycle: availability.label,
     lifecycleKey: availability.key,
-    eventId: `Event #${event.id}`,
+    eventId: formatEventId(event.id),
     title: toPublicEventCopy(event.name),
     description: toPublicEventCopy(event.description),
     metadata: [
-      { label: "When", value: formatEventTimeRange(event.startTime, event.endTime) },
-      { label: "Where", value: toPublicEventCopy(event.location) },
+      { label: "Time", value: formatEventTimeRange(event.startTime, event.endTime) },
+      { label: "Location", value: toPublicEventCopy(event.location) },
       { label: "Organizer", value: shortAddress(event.organizer) },
       {
         label: "Passes",
@@ -182,33 +186,21 @@ export function applyDeploymentPresentation(config, { active } = {}) {
   const isActive = active ?? (
     config.status === "active" && Boolean(config.contractAddress)
   );
-  const banner = document.querySelector("#deployment-banner");
-  banner.dataset.state = isActive ? "active" : "pending";
-  document.querySelector("#deployment-title").textContent = isActive
-    ? config.networkName
-    : `${config.networkName} deployment pending`;
-  document.querySelector("#deployment-message").textContent = isActive
-    ? `Contract ${shortAddress(config.contractAddress)} · Chain ${config.chainId}`
-    : `Chain ${config.chainId} · Read and write actions are unavailable.`;
   document.querySelector("#footer-network-label").textContent =
     config.networkName;
 
   const contractUrl = isActive
     ? `${config.explorerUrl}/address/${config.contractAddress}`
     : null;
-  for (const selector of ["#contract-link", "#network-contract-link"]) {
-    const link = document.querySelector(selector);
-    if (contractUrl) {
-      link.href = contractUrl;
-      link.textContent = selector === "#contract-link"
-        ? "View on BOTScan"
-        : "View contract";
-      link.removeAttribute("aria-disabled");
-    } else {
-      link.removeAttribute("href");
-      link.textContent = "Contract unavailable";
-      link.setAttribute("aria-disabled", "true");
-    }
+  const link = document.querySelector("#contract-link");
+  if (contractUrl) {
+    link.href = contractUrl;
+    link.textContent = "View on BOTScan";
+    link.removeAttribute("aria-disabled");
+  } else {
+    link.removeAttribute("href");
+    link.textContent = "Contract unavailable";
+    link.setAttribute("aria-disabled", "true");
   }
 }
 
@@ -460,7 +452,7 @@ export function createAppController() {
       const passHeading = element("div", "pass-card-heading");
       passHeading.append(
         element("span", "verification-mark", "✓ Pass verified"),
-        element("span", "event-id", `Event #${pass.eventId}`)
+        element("span", "event-id", formatEventId(pass.eventId))
       );
       const passContent = element("div", "pass-card-content");
       passContent.append(
@@ -522,7 +514,7 @@ export function createAppController() {
     const head = element("div", "detail-head");
     const heading = element("div");
     heading.append(
-      element("p", "eyebrow", `EVENT #${event.id}`),
+      element("p", "eyebrow", formatEventId(event.id)),
       element("h1", "", toPublicEventCopy(event.name)),
       element("p", "lead", toPublicEventCopy(event.description))
     );
@@ -679,7 +671,6 @@ export function createAppController() {
   async function initialize() {
     showRoute();
     const active = hasActiveDeployment();
-    const banner = document.querySelector("#deployment-banner");
     applyDeploymentPresentation(FRONTEND_CONFIG, { active });
     document.querySelector("#connect-button").disabled = !active;
     document.querySelector("#create-form button[type=submit]").disabled =
@@ -709,9 +700,6 @@ export function createAppController() {
           onChainChanged: refreshWallet,
         });
       } catch (error) {
-        banner.dataset.state = "pending";
-        document.querySelector("#deployment-title").textContent = `${FRONTEND_CONFIG.networkName} RPC unavailable`;
-        document.querySelector("#deployment-message").textContent = `Chain ${FRONTEND_CONFIG.chainId} · Contract data could not be loaded. Refresh to retry.`;
         showError(error);
       }
       updateWallet();

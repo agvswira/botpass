@@ -26,7 +26,6 @@ function neutralIndex(extra = "") {
     "Verifiable event passes",
     "How BOTPass works",
     "My Passes",
-    '<strong id="deployment-title">Loading network status…</strong>',
     '<span id="footer-network-label">Loading network…</span>',
     extra,
   ].join("\n");

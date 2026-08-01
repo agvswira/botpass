@@ -86,29 +86,26 @@ describe("BOTPass frontend application services", function () {
     expect(html).to.match(/<ul\s+id="manage-events"\s+class="event-list"[^>]*><\/ul>/i);
   });
 
-  it("keeps pre-initialization network status neutral", function () {
+  it("keeps deployment details in the footer without a top network banner", function () {
     const html = fs.readFileSync(path.join(projectRoot, "frontend/index.html"), "utf8");
     expect(html).not.to.match(/BOT Chain (?:Testnet|Mainnet)/);
     expect(html).not.to.match(/https:\/\/(?:rpc|scan)\.(?:bohr\.life|botchain\.ai)/);
-    expect(html).to.include('id="deployment-title">Loading network status…');
+    expect(html).not.to.include('id="deployment-banner"');
+    expect(html).not.to.include('id="network-contract-link"');
+    expect(html).not.to.include('class="network-bar"');
     expect(html).to.include('id="footer-network-label">Loading network…');
-    expect(html).to.match(/id="network-contract-link"[^>]*aria-disabled="true"/);
     expect(html).to.match(/id="contract-link"[^>]*aria-disabled="true"/);
   });
 
-  it("populates active deployment status and explorer links from configuration", async function () {
+  it("populates active footer deployment details from configuration", async function () {
     const { applyDeploymentPresentation } = await importModule(
       "frontend/src/pass/controller.mjs"
     );
     const elements = Object.fromEntries(
-      [
-        "deployment-banner",
-        "deployment-title",
-        "deployment-message",
-        "network-contract-link",
-        "contract-link",
-        "footer-network-label",
-      ].map((id) => [id, new TestElement("DIV")])
+      ["contract-link", "footer-network-label"].map((id) => [
+        id,
+        new TestElement("DIV"),
+      ])
     );
     const previousDocument = global.document;
     global.document = {
@@ -125,24 +122,16 @@ describe("BOTPass frontend application services", function () {
         { active: true }
       );
 
-      expect(elements["deployment-banner"].dataset.state).to.equal("active");
-      expect(elements["deployment-title"].textContent).to.equal("BOT Chain Mainnet");
-      expect(elements["deployment-message"].textContent).to.equal(
-        "Contract 0x1111…1111 · Chain 677"
-      );
       expect(elements["footer-network-label"].textContent).to.equal(
         "BOT Chain Mainnet"
       );
-      expect(elements["network-contract-link"].textContent).to.equal(
-        "View contract"
-      );
       expect(elements["contract-link"].textContent).to.equal("View on BOTScan");
-      for (const id of ["network-contract-link", "contract-link"]) {
-        expect(elements[id].href).to.equal(
-          "https://scan.botchain.ai/address/0x1111111111111111111111111111111111111111"
-        );
-        expect(elements[id].attributes).not.to.have.property("aria-disabled");
-      }
+      expect(elements["contract-link"].href).to.equal(
+        "https://scan.botchain.ai/address/0x1111111111111111111111111111111111111111"
+      );
+      expect(elements["contract-link"].attributes).not.to.have.property(
+        "aria-disabled"
+      );
 
       applyDeploymentPresentation(
         {
@@ -152,12 +141,6 @@ describe("BOTPass frontend application services", function () {
           contractAddress: "0x2222222222222222222222222222222222222222",
         },
         { active: true }
-      );
-      expect(elements["deployment-title"].textContent).to.equal(
-        "BOT Chain Testnet"
-      );
-      expect(elements["deployment-message"].textContent).to.equal(
-        "Contract 0x2222…2222 · Chain 968"
       );
       expect(elements["footer-network-label"].textContent).to.equal(
         "BOT Chain Testnet"
@@ -175,14 +158,10 @@ describe("BOTPass frontend application services", function () {
       "frontend/src/pass/controller.mjs"
     );
     const elements = Object.fromEntries(
-      [
-        "deployment-banner",
-        "deployment-title",
-        "deployment-message",
-        "network-contract-link",
-        "contract-link",
-        "footer-network-label",
-      ].map((id) => [id, new TestElement("DIV")])
+      ["contract-link", "footer-network-label"].map((id) => [
+        id,
+        new TestElement("DIV"),
+      ])
     );
     const previousDocument = global.document;
     global.document = {
@@ -199,21 +178,16 @@ describe("BOTPass frontend application services", function () {
         { active: false }
       );
 
-      expect(elements["deployment-banner"].dataset.state).to.equal("pending");
-      expect(elements["deployment-title"].textContent).to.equal(
-        "BOT Chain Mainnet deployment pending"
-      );
-      expect(elements["deployment-message"].textContent).to.equal(
-        "Chain 677 · Read and write actions are unavailable."
-      );
       expect(elements["footer-network-label"].textContent).to.equal(
         "BOT Chain Mainnet"
       );
-      for (const id of ["network-contract-link", "contract-link"]) {
-        expect(elements[id]).not.to.have.property("href");
-        expect(elements[id].attributes["aria-disabled"]).to.equal("true");
-        expect(elements[id].textContent).to.equal("Contract unavailable");
-      }
+      expect(elements["contract-link"]).not.to.have.property("href");
+      expect(elements["contract-link"].attributes["aria-disabled"]).to.equal(
+        "true"
+      );
+      expect(elements["contract-link"].textContent).to.equal(
+        "Contract unavailable"
+      );
     } finally {
       global.document = previousDocument;
     }
@@ -251,7 +225,7 @@ describe("BOTPass frontend application services", function () {
   });
 
   it("maps every event row field to a readable labeled value", async function () {
-    const { getEventListRowData } = await importModule("frontend/src/pass/controller.mjs");
+    const { formatEventId, getEventListRowData } = await importModule("frontend/src/pass/controller.mjs");
     const row = getEventListRowData(
       {
         ...event("0x1111111111111111111111111111111111111111", "Open studio"),
@@ -262,13 +236,14 @@ describe("BOTPass frontend application services", function () {
 
     expect(row).to.include({
       lifecycle: "Passes available",
-      eventId: "Event #42",
+      eventId: "Event ID: 42",
       title: "Open studio",
       action: "View & get pass",
     });
+    expect(formatEventId(42n)).to.equal("Event ID: 42");
     expect(row.metadata.map(({ label }) => label)).to.deep.equal([
-      "When",
-      "Where",
+      "Time",
+      "Location",
       "Organizer",
       "Passes",
     ]);
@@ -305,11 +280,16 @@ describe("BOTPass frontend application services", function () {
       );
       const links = descendants(row, "a");
       const labels = descendants(row, "dt").map(({ textContent }) => textContent);
+      const header = row.children[0];
 
       expect(row.tagName).to.equal("li");
+      expect(header.children[0].children[1].textContent).to.equal(
+        "Passes available"
+      );
+      expect(header.children[1].textContent).to.equal("Event ID: 7");
       expect(links).to.have.length(1);
       expect(links[0].textContent).to.equal("View & get pass");
-      expect(labels).to.deep.equal(["When", "Where", "Organizer", "Passes"]);
+      expect(labels).to.deep.equal(["Time", "Location", "Organizer", "Passes"]);
     } finally {
       global.document = previousDocument;
     }

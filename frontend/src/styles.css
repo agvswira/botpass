@@ -167,26 +167,6 @@ main {
   margin: 0 auto;
   padding: 1.25rem clamp(1rem, 4vw, 3rem) 5rem;
 }
-.network-bar {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 0.75rem;
-  min-height: 3.25rem;
-  padding: 0.7rem 0.9rem;
-  border: 1px solid var(--line);
-  border-radius: 0.65rem;
-  color: #475467;
-  background: rgba(255, 255, 255, 0.7);
-  font-size: 0.82rem;
-}
-.network-dot { width: 0.55rem; height: 0.55rem; border-radius: 50%; background: var(--amber); }
-.network-bar[data-state="active"] .network-dot { background: var(--green); }
-.network-bar strong { margin-right: 0.5rem; color: var(--ink); }
-.network-bar a { color: var(--blue); font-weight: 700; text-decoration: none; }
-.network-bar a:hover { text-decoration: underline; }
-.network-bar a[aria-disabled="true"] { opacity: 0.65; pointer-events: none; }
-
 .transaction-status {
   position: sticky;
   top: 0.75rem;
@@ -258,8 +238,8 @@ h2 { letter-spacing: -0.032em; }
   transition: border-color 150ms ease, box-shadow 150ms ease;
 }
 .event-row:hover { border-color: #b4c1e4; box-shadow: 0 8px 24px rgba(23, 32, 51, 0.06); }
-.event-card-header { grid-area: header; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
-.event-id { color: var(--muted); font-size: 0.76rem; font-weight: 650; }
+.event-card-header { grid-area: header; display: flex; align-items: center; justify-content: flex-start; gap: 0.75rem; }
+.event-id { padding-left: 0.75rem; border-left: 1px solid var(--line); color: var(--muted); font-size: 0.76rem; font-weight: 650; }
 .event-card-content { grid-area: content; min-width: 0; }
 .event-card-content h3 { margin-bottom: 0.4rem; font-size: 1.2rem; }
 .event-card-content p { display: -webkit-box; margin-bottom: 0; overflow: hidden; color: var(--muted); line-height: 1.5; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; }
@@ -413,11 +393,6 @@ textarea { resize: vertical; }
   .wallet-button { min-width: 0; padding-inline: 0.75rem; }
   .wallet-menu { position: fixed; top: 4.3rem; right: 1rem; left: 1rem; width: auto; }
   main { padding-bottom: 3.5rem; }
-  .network-bar { grid-template-columns: auto 1fr; }
-  .network-bar div { display: grid; gap: 0.15rem; }
-  .network-bar strong { margin-right: 0; }
-  .network-bar a { grid-column: 2; }
-
   .hero { padding: 3.3rem 0; }
   h1 { font-size: 2.65rem; }
   .hero-summary dl div { grid-template-columns: 1fr; gap: 0.25rem; }
