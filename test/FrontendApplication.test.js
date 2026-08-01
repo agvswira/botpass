@@ -209,15 +209,21 @@ describe("BOTPass frontend application services", function () {
     });
   });
 
-  it("keeps rendered event metadata in current pass terminology", async function () {
+  it("normalizes legacy demo titles before generic public terminology", async function () {
     const { toPublicEventCopy } = await importModule("frontend/src/pass/controller.mjs");
-    const rendered = toPublicEventCopy(
-      "BOTPass Open Claim Demo with QR code and previous deployment notes"
+    expect(toPublicEventCopy("BOTPass Open Claim Demo")).to.equal(
+      "BOTPass Attendance Demo"
     );
-    expect(rendered).to.equal(
-      "BOTPass event pass Demo with check-in code and network notes"
+    expect(
+      toPublicEventCopy("Functional Open Claim acceptance event on BOT Chain Testnet.")
+    ).to.equal(
+      "Live attendance-pass demo on BOT Chain Testnet."
     );
-    expect(rendered).not.to.match(/claim|\bQR\b|previous deployment/i);
+    expect(
+      toPublicEventCopy("Open Claim with QR code and previous deployment notes")
+    ).to.equal(
+      "event pass with check-in code and network notes"
+    );
   });
 
   it("recognizes organizer controls without address-case ambiguity", async function () {

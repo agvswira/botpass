@@ -34,6 +34,8 @@ export function formatEventTimeRange(startTime, endTime) {
 
 export function toPublicEventCopy(value) {
   return String(value)
+    .replace(/\bBOTPass Open Claim Demo\b/gi, "BOTPass Attendance Demo")
+    .replace(/\bFunctional Open Claim acceptance event\b/gi, "Live attendance-pass demo")
     .replace(/\bopen claims?\b/gi, "event pass")
     .replace(/\bclaiming\b/gi, "getting a pass")
     .replace(/\bclaimed\b/gi, "added a pass")
