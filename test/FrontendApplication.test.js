@@ -55,16 +55,20 @@ describe("BOTPass frontend application services", function () {
   it("renders loading and error states as list items only for event lists", async function () {
     const { setListState } = await importModule("frontend/src/pass/controller.mjs");
     const eventList = new TestElement("UL");
+    const eventErrorList = new TestElement("UL");
     const passContainer = new TestElement("DIV");
     const previousDocument = global.document;
     global.document = { createElement: (tagName) => new TestElement(tagName) };
     try {
       setListState(eventList, "loading", "Loading events…");
+      setListState(eventErrorList, "error", "Events could not be loaded");
       setListState(passContainer, "error", "Passes could not be loaded");
 
       expect(eventList.children[0].tagName).to.equal("li");
       expect(eventList.children[0].attributes.role).to.equal("status");
       expect(eventList.attributes["aria-busy"]).to.equal("true");
+      expect(eventErrorList.children[0].tagName).to.equal("li");
+      expect(eventErrorList.children[0].attributes.role).to.equal("alert");
       expect(passContainer.children[0].tagName).to.equal("div");
       expect(passContainer.children[0].attributes.role).to.equal("alert");
     } finally {
