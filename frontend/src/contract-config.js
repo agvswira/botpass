@@ -19,6 +19,6 @@ export const FRONTEND_CONFIG = Object.freeze({
   "contractAddress": "0x41fc0234A8f94482168B063FDE7ABE67043E68A4",
   "deploymentTransactionHash": "0xb86877c47c9b6b937f0142245d2c6e9083ed73e87d5b36b063d0624f43a7105f",
   "activationReviewed": true,
-  "sourceVerified": false,
+  "sourceVerified": true,
   "writesEnabled": true
 });

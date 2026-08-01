@@ -22,7 +22,7 @@ BOTPass is an on-chain event attendance-pass registry on BOT Chain: organizers c
 
 ## Networks and evidence
 
-The Mainnet contract is [`0x41fc0234A8f94482168B063FDE7ABE67043E68A4`](https://scan.botchain.ai/address/0x41fc0234A8f94482168B063FDE7ABE67043E68A4) on BOT Chain Mainnet (chain ID 677). Its confirmed receipt and exact runtime-bytecode evidence are committed in [`deployments/677.json`](deployments/677.json). No event was created and no contract function was exercised on Mainnet after deployment.
+The Mainnet contract is [`0x41fc0234A8f94482168B063FDE7ABE67043E68A4`](https://scan.botchain.ai/address/0x41fc0234A8f94482168B063FDE7ABE67043E68A4) on BOT Chain Mainnet (chain ID 677). Its confirmed receipt and exact runtime-bytecode evidence are committed in [`deployments/677.json`](deployments/677.json), and its Solidity source is fully verified on BOTScan. No event was created and no contract function was exercised on Mainnet after deployment.
 
 The Testnet preview contract is [`0x2ea9E965433D8f42F9C0caa8BC223335f8e14f6C`](https://scan.bohr.life/address/0x2ea9E965433D8f42F9C0caa8BC223335f8e14f6C) on BOT Chain Testnet (chain ID 968). Its deployment receipt is committed in [`deployments/968.json`](deployments/968.json); Event ID 1 creation and pass-availability receipt evidence are committed in [`deployments/968-demo.json`](deployments/968-demo.json).
 

@@ -23,5 +23,5 @@
   "runtimeBytecodeKeccak256": "0x1796b394c32c64eccc1d87d2db330eaf85aa80013945174b3c87787289c560ab",
   "standardInputSha256": "616a364b407873de9042f05e356da3192742aa76cf2902154c92855187c1dc62",
   "sourceCommit": "d4b192173d15eb32ce94fba6792313c7bb87ec52",
-  "verificationStatus": "unverified"
+  "verificationStatus": "verified"
 }
