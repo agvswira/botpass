@@ -22,6 +22,10 @@ class TestElement {
     this.children.push(...children);
   }
 
+  replaceChildren(...children) {
+    this.children = children;
+  }
+
   setAttribute(name, value) {
     this.attributes[name] = value;
   }
@@ -48,6 +52,26 @@ function event(organizer, name = "Event") {
 }
 
 describe("BOTPass frontend application services", function () {
+  it("renders loading and error states as list items only for event lists", async function () {
+    const { setListState } = await importModule("frontend/src/pass/controller.mjs");
+    const eventList = new TestElement("UL");
+    const passContainer = new TestElement("DIV");
+    const previousDocument = global.document;
+    global.document = { createElement: (tagName) => new TestElement(tagName) };
+    try {
+      setListState(eventList, "loading", "Loading events…");
+      setListState(passContainer, "error", "Passes could not be loaded");
+
+      expect(eventList.children[0].tagName).to.equal("li");
+      expect(eventList.children[0].attributes.role).to.equal("status");
+      expect(eventList.attributes["aria-busy"]).to.equal("true");
+      expect(passContainer.children[0].tagName).to.equal("div");
+      expect(passContainer.children[0].attributes.role).to.equal("alert");
+    } finally {
+      global.document = previousDocument;
+    }
+  });
+
   it("keeps event routes as semantic lists with an anchored page shell", function () {
     const html = fs.readFileSync(path.join(projectRoot, "frontend/index.html"), "utf8");
     expect(html).to.match(/<ul\s+id="home-events"\s+class="event-list"[^>]*><\/ul>/i);
@@ -187,7 +211,7 @@ describe("BOTPass frontend application services", function () {
       "BOTPass Open Claim Demo with QR code and previous deployment notes"
     );
     expect(rendered).to.equal(
-      "BOTPass Attendance Demo with check-in code and network notes"
+      "BOTPass event pass Demo with check-in code and network notes"
     );
     expect(rendered).not.to.match(/claim|\bQR\b|previous deployment/i);
   });

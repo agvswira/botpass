@@ -34,9 +34,7 @@ export function formatEventTimeRange(startTime, endTime) {
 
 export function toPublicEventCopy(value) {
   return String(value)
-    .replace(/\bBOTPass open claims? demo\b/gi, "BOTPass Attendance Demo")
-    .replace(/\bFunctional open claims? acceptance event\b/gi, "Live attendance-pass demo")
-    .replace(/\bopen claims?\b/gi, "pass availability")
+    .replace(/\bopen claims?\b/gi, "event pass")
     .replace(/\bclaiming\b/gi, "getting a pass")
     .replace(/\bclaimed\b/gi, "added a pass")
     .replace(/\bclaims\b/gi, "passes")
@@ -185,8 +183,11 @@ function availabilityIndicator(availability) {
   return status;
 }
 
-function setListState(container, state, title, message) {
-  const wrapper = element("div", `list-state ${state}`);
+export function setListState(container, state, title, message) {
+  const wrapper = element(
+    container.tagName === "UL" ? "li" : "div",
+    `list-state ${state}`
+  );
   wrapper.setAttribute("role", state === "error" ? "alert" : "status");
   wrapper.append(element("strong", "", title));
   if (message) wrapper.append(element("span", "", message));
@@ -319,7 +320,7 @@ export function createAppController() {
 
   async function requireWriteContract() {
     if (!FRONTEND_CONFIG.writesEnabled) {
-      throw new Error("BOTPass actions are unavailable until this deployment is active and reviewed.");
+      throw new Error("BOTPass writes are enabled only for the interactive Testnet demo.");
     }
     if (!wallet.account) await connect();
     if (wallet.chainId !== FRONTEND_CONFIG.chainId) Object.assign(wallet, await switchOrAddBotChain());
@@ -476,15 +477,10 @@ export function createAppController() {
     });
     const head = element("div", "detail-head");
     const heading = element("div");
-    const description = element("div", "event-description");
-    description.append(
-      element("span", "event-description-label", "About this event"),
-      element("p", "", toPublicEventCopy(event.description))
-    );
     heading.append(
       element("p", "eyebrow", `EVENT #${event.id}`),
       element("h1", "", toPublicEventCopy(event.name)),
-      description
+      element("p", "lead", toPublicEventCopy(event.description))
     );
     head.append(heading, availabilityIndicator(availability));
     const facts = element("dl", "facts");
@@ -492,7 +488,7 @@ export function createAppController() {
     const attendeePanel = element("div", "event-action-panel");
     const attendeeCopy = element("div");
     attendeeCopy.append(
-      element("h2", "", hasPass ? "Attendance recorded" : "Record your attendance"),
+      element("h2", "", hasPass ? "Pass added" : "Get your event pass"),
       element(
         "p",
         "action-note",
@@ -639,14 +635,13 @@ export function createAppController() {
   async function initialize() {
     showRoute();
     const active = hasActiveDeployment();
+    const banner = document.querySelector("#deployment-banner");
+    banner.dataset.state = active ? "active" : "pending";
+    document.querySelector("#deployment-title").textContent = active ? "BOT Chain Testnet" : "Contract unavailable";
+    document.querySelector("#deployment-message").textContent = active ? `Contract ${shortAddress(FRONTEND_CONFIG.contractAddress)} · Chain ${FRONTEND_CONFIG.chainId}` : "Read and write actions are unavailable.";
     const contractUrl = active ? `${FRONTEND_CONFIG.explorerUrl}/address/${FRONTEND_CONFIG.contractAddress}` : FRONTEND_CONFIG.explorerUrl;
-    const contractLink = document.querySelector("#contract-link");
-    const faucetLink = document.querySelector("#faucet-link");
-    document.querySelector("#footer-network-name").textContent = FRONTEND_CONFIG.networkName;
-    contractLink.href = contractUrl;
-    contractLink.hidden = !active;
-    faucetLink.hidden = !FRONTEND_CONFIG.faucetUrl;
-    if (FRONTEND_CONFIG.faucetUrl) faucetLink.href = FRONTEND_CONFIG.faucetUrl;
+    document.querySelector("#contract-link").href = contractUrl;
+    document.querySelector("#network-contract-link").href = contractUrl;
     document.querySelector("#connect-button").disabled = !active;
     document.querySelector("#create-form button[type=submit]").disabled =
       !FRONTEND_CONFIG.writesEnabled;
@@ -675,11 +670,12 @@ export function createAppController() {
           onChainChanged: refreshWallet,
         });
       } catch (error) {
+        banner.dataset.state = "pending";
+        document.querySelector("#deployment-title").textContent = "BOT Chain RPC unavailable";
+        document.querySelector("#deployment-message").textContent = "Contract data could not be loaded. Refresh to retry.";
         showError(error);
       }
       updateWallet();
-    } else {
-      setStatus(`BOTPass is not active on ${FRONTEND_CONFIG.networkName} yet.`);
     }
     try {
       await renderRoute();
