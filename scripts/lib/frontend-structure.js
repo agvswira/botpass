@@ -29,11 +29,13 @@ function validateFrontendStructure(projectRoot) {
   requirePattern(html, /id="transaction-status"[^>]*role="status"[^>]*aria-live="polite"/i, "Missing polite transaction status");
   requirePattern(html, /id="verify-result"[^>]*role="status"[^>]*aria-live="polite"/i, "Missing polite Verify result");
   requirePattern(css, /body\s*\{[^}]*display:grid[^}]*grid-template-rows:auto 1fr auto/i, "Application shell must use header/main/footer grid rows");
-  requirePattern(css, /body\s*\{[^}]*min-height:100vh/i, "Application shell must fill the viewport");
+  requirePattern(css, /body\s*\{[^}]*min-height:100vh[^}]*min-height:100dvh/i, "Application shell must fill the dynamic viewport");
   requirePattern(css, /\.site-footer\s*\{[^}]*align-self:end/i, "Footer must remain at the bottom of short routes");
   requirePattern(css, /:focus-visible\s*\{[^}]*outline:3px solid #f59e0b/i, "Visible high-contrast focus styling is required");
   requirePattern(css, /\.event-list\s*,\s*\.pass-list\s*\{[^}]*display:grid/i, "Event and pass routes must use functional list layouts");
   requirePattern(css, /\.availability\s*\{[^}]*display:inline-flex/i, "Event availability must use an inline status treatment");
+  requirePattern(css, /\.list-state\s*\{[^}]*display:\s*grid/i, "List routes must provide loading and error states");
+  requirePattern(html, /id="connect-button"[^>]*aria-controls="wallet-menu"[^>]*aria-expanded="false"/i, "Wallet control must expose its disclosure state");
   for (const requiredCopy of ["Get pass", "Passes available", "My Passes", "How BOTPass works", "Verify a pass", "latest 100"]) {
     if (!html.toLowerCase().includes(requiredCopy.toLowerCase())) throw new Error(`Missing required product copy: ${requiredCopy}`);
   }

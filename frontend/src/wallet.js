@@ -159,6 +159,40 @@ export async function requestWalletAccountSwitch({
   };
 }
 
+export function createWalletRefreshHandler({
+  isDisconnected,
+  clear,
+  read,
+  apply,
+  render,
+  onError,
+}) {
+  let generation = 0;
+
+  return async function refreshWallet() {
+    if (isDisconnected()) return;
+    const currentGeneration = ++generation;
+    clear();
+
+    try {
+      const snapshot = await read();
+      if (currentGeneration !== generation || isDisconnected()) return;
+      apply(snapshot);
+      await render();
+    } catch (error) {
+      if (currentGeneration !== generation || isDisconnected()) return;
+      clear();
+      try {
+        await render();
+      } catch (renderError) {
+        onError(renderError);
+        return;
+      }
+      onError(error);
+    }
+  };
+}
+
 export function bindWalletEvents({
   onAccountsChanged,
   onChainChanged,

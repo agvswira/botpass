@@ -3,6 +3,7 @@ import {
   createPublicReadProvider,
   getReadContract,
   getWriteContract,
+  readLatestBlockTimestamp,
   readEventFromContract,
   readLatestEventsFromContract,
   readOrganizerEventsFromContract,
@@ -13,6 +14,7 @@ import { FRONTEND_CONFIG, hasActiveDeployment } from "../networks.js";
 import {
   bindWalletEvents,
   clearWalletDisconnected,
+  createWalletRefreshHandler,
   isWalletDisconnected,
   markWalletDisconnected,
   readWalletSnapshot,
@@ -26,7 +28,20 @@ const formatDate = (value) =>
     .format(new Date(Number(value) * 1000));
 const shortAddress = (value) => `${value.slice(0, 6)}…${value.slice(-4)}`;
 
-export function getEventAvailability(event, now = BigInt(Math.floor(Date.now() / 1000))) {
+export function toPublicEventCopy(value) {
+  return String(value)
+    .replace(/\bopen claims?\b/gi, "event pass")
+    .replace(/\bclaiming\b/gi, "getting a pass")
+    .replace(/\bclaimed\b/gi, "added a pass")
+    .replace(/\bclaims\b/gi, "passes")
+    .replace(/\bclaim\b/gi, "pass")
+    .replace(/\bQR(?:\s+code)?\b/gi, "check-in code")
+    .replace(/\b(?:previous|old|legac[y])\s+deployment\b/gi, "network")
+    .replace(/\blegac[y] behavior\b/gi, "earlier behavior")
+    .replace(/\bremoved (?:flow|feature)\b/gi, "earlier option");
+}
+
+export function getEventAvailability(event, now) {
   const currentTime = BigInt(now);
   if (currentTime < BigInt(event.startTime)) {
     return {
@@ -60,10 +75,51 @@ export function getEventAvailability(event, now = BigInt(Math.floor(Date.now() /
   };
 }
 
+export function getNextLifecycleRefreshDelay(events, now) {
+  if (now === null || events.length === 0) return null;
+  const currentTime = BigInt(now);
+  let nextBoundary = null;
+  for (const event of events) {
+    const startTime = BigInt(event.startTime);
+    const endTime = BigInt(event.endTime);
+    const boundary = currentTime < startTime
+      ? startTime
+      : currentTime <= endTime
+        ? endTime + 1n
+        : null;
+    if (boundary !== null && (nextBoundary === null || boundary < nextBoundary)) {
+      nextBoundary = boundary;
+    }
+  }
+  if (nextBoundary === null) return null;
+  return Math.min(Number(nextBoundary - currentTime) * 1_000, 2_147_000_000);
+}
+
 export function isEventOrganizer(event, account) {
   return Boolean(
     account && event.organizer.toLowerCase() === account.toLowerCase()
   );
+}
+
+export function getPassActionState({ availability, hasPass, writesEnabled }) {
+  if (hasPass) {
+    return { label: "Pass added", disabled: true, reason: null };
+  }
+  if (!availability.canGetPass) {
+    return { label: "Get pass", disabled: true, reason: availability.reason };
+  }
+  if (!writesEnabled) {
+    return {
+      label: "Get pass",
+      disabled: true,
+      reason: "Pass actions are unavailable in this read-only environment.",
+    };
+  }
+  return {
+    label: "Get pass",
+    disabled: false,
+    reason: availability.reason,
+  };
 }
 
 function element(tag, className, text) {
@@ -83,8 +139,17 @@ function availabilityIndicator(availability) {
   return status;
 }
 
-function eventCard(event, { manage = false } = {}) {
-  const availability = getEventAvailability(event);
+function setListState(container, state, title, message) {
+  const wrapper = element("div", `list-state ${state}`);
+  wrapper.setAttribute("role", state === "error" ? "alert" : "status");
+  wrapper.append(element("strong", "", title));
+  if (message) wrapper.append(element("span", "", message));
+  container.replaceChildren(wrapper);
+  container.setAttribute("aria-busy", String(state === "loading"));
+}
+
+function eventCard(event, { manage = false, now } = {}) {
+  const availability = getEventAvailability(event, now);
   const card = element("article", "event-card");
   const cardHeader = element("div", "event-card-header");
   cardHeader.append(
@@ -93,13 +158,14 @@ function eventCard(event, { manage = false } = {}) {
   );
   const content = element("div", "event-card-content");
   content.append(
-    element("h3", "", event.name),
-    element("p", "", event.description)
+    element("h3", "", toPublicEventCopy(event.name)),
+    element("p", "", toPublicEventCopy(event.description))
   );
   const metadata = element("div", "event-metadata");
   metadata.append(
-    element("span", "", event.location),
+    element("span", "", toPublicEventCopy(event.location)),
     element("span", "", formatDate(event.startTime)),
+    element("span", "", `Organizer ${shortAddress(event.organizer)}`),
     element("span", "", `${event.passCount} passes issued`)
   );
   const link = element("a", "event-card-link", manage ? "Manage event" : "View event");
@@ -118,6 +184,8 @@ export function createAppController() {
   };
   let readProvider = null;
   let readContract = null;
+  let lifecycleTimer = null;
+  let routeRenderGeneration = 0;
 
   function setStatus(message, hidden = false) {
     const node = document.querySelector("#transaction-status");
@@ -139,12 +207,27 @@ export function createAppController() {
     if (!wallet.account) setWalletMenu(false);
   }
 
-  function setWalletMenu(open) {
+  function clearConnectedWallet() {
+    Object.assign(wallet, {
+      account: null,
+      chainId: null,
+      browserProvider: null,
+      injectedProvider: null,
+    });
+    updateWallet();
+    document.querySelectorAll(".organizer-panel").forEach((node) => node.remove());
+    document.querySelector("#manage-events").replaceChildren();
+    document.querySelector("#wallet-passes").replaceChildren();
+  }
+
+  function setWalletMenu(open, { restoreFocus = false } = {}) {
     const button = document.querySelector("#connect-button");
     const menu = document.querySelector("#wallet-menu");
     const visible = Boolean(open && wallet.account);
+    const shouldRestoreFocus = !visible && restoreFocus && menu.contains(document.activeElement);
     button.setAttribute("aria-expanded", String(visible));
     menu.hidden = !visible;
+    if (shouldRestoreFocus) button.focus();
   }
 
   async function connect() {
@@ -163,6 +246,7 @@ export function createAppController() {
       provider: wallet.injectedProvider,
     });
     if (!result.supported) {
+      setWalletMenu(false, { restoreFocus: true });
       throw new Error(
         "Switch accounts in your wallet extension, then return to BOTPass."
       );
@@ -175,21 +259,15 @@ export function createAppController() {
     }
     Object.assign(wallet, snapshot);
     clearWalletDisconnected();
-    setWalletMenu(false);
+    setWalletMenu(false, { restoreFocus: true });
     updateWallet();
     await renderRoute();
   }
 
   async function disconnect() {
     markWalletDisconnected();
-    Object.assign(wallet, {
-      account: null,
-      chainId: null,
-      browserProvider: null,
-      injectedProvider: null,
-    });
-    setWalletMenu(false);
-    updateWallet();
+    setWalletMenu(false, { restoreFocus: true });
+    clearConnectedWallet();
     await renderRoute();
     setStatus("Wallet disconnected from BOTPass.");
   }
@@ -214,33 +292,78 @@ export function createAppController() {
     return receipt;
   }
 
-  async function loadEvents(container, filter) {
+  function scheduleLifecycleRefresh(events, now) {
+    if (lifecycleTimer !== null) clearTimeout(lifecycleTimer);
+    const delay = getNextLifecycleRefreshDelay(events, now);
+    if (delay === null) {
+      lifecycleTimer = null;
+      return;
+    }
+    lifecycleTimer = setTimeout(() => {
+      lifecycleTimer = null;
+      renderRoute().catch(showError);
+    }, delay);
+  }
+
+  async function loadEvents(container, filter, now, generation) {
     container.replaceChildren();
     if (!readContract) return [];
-    const events = filter
-      ? await filter(readContract)
-      : await readLatestEventsFromContract(readContract);
-    events.forEach((event) => container.append(eventCard(event, { manage: Boolean(filter) })));
-    return events;
+    setListState(container, "loading", "Loading events…");
+    try {
+      const events = filter
+        ? await filter(readContract)
+        : await readLatestEventsFromContract(readContract);
+      if (generation !== routeRenderGeneration) return null;
+      container.replaceChildren();
+      events.forEach((event) => container.append(eventCard(event, { manage: Boolean(filter), now })));
+      return events;
+    } catch (error) {
+      if (generation !== routeRenderGeneration) return null;
+      setListState(container, "error", "Events could not be loaded", "Refresh the page to retry.");
+      throw error;
+    } finally {
+      if (generation === routeRenderGeneration) {
+        container.setAttribute("aria-busy", "false");
+      }
+    }
   }
 
-  async function renderHome() {
-    const events = await loadEvents(document.querySelector("#home-events"));
+  async function renderHome(now, generation) {
+    const events = await loadEvents(document.querySelector("#home-events"), null, now, generation);
+    if (events === null) return;
     document.querySelector("#event-count").textContent = `${events.length} event${events.length === 1 ? "" : "s"}`;
+    scheduleLifecycleRefresh(events, now);
   }
 
-  async function renderManage() {
+  async function renderManage(now, generation) {
     const container = document.querySelector("#manage-events");
     container.replaceChildren();
     if (!wallet.account || !readContract) return;
-    await loadEvents(container, (contract) => readOrganizerEventsFromContract(contract, wallet.account));
+    const account = wallet.account;
+    const events = await loadEvents(container, (contract) => readOrganizerEventsFromContract(contract, account), now, generation);
+    if (events === null) return;
+    scheduleLifecycleRefresh(events, now);
   }
 
-  async function renderPasses() {
+  async function renderPasses(generation) {
     const container = document.querySelector("#wallet-passes");
     container.replaceChildren();
     if (!wallet.account || !readContract) return;
-    const passes = await readWalletPassesFromContract(readContract, wallet.account);
+    setListState(container, "loading", "Loading passes…");
+    let passes;
+    try {
+      passes = await readWalletPassesFromContract(readContract, wallet.account);
+      if (generation !== routeRenderGeneration) return;
+      container.replaceChildren();
+    } catch (error) {
+      if (generation !== routeRenderGeneration) return;
+      setListState(container, "error", "Passes could not be loaded", "Check the network and retry.");
+      throw error;
+    } finally {
+      if (generation === routeRenderGeneration) {
+        container.setAttribute("aria-busy", "false");
+      }
+    }
     passes.forEach((pass) => {
       const card = element("article", "pass-card");
       const passHeading = element("div", "pass-card-heading");
@@ -250,7 +373,7 @@ export function createAppController() {
       );
       const passContent = element("div", "pass-card-content");
       passContent.append(
-        element("h3", "", pass.event.name),
+        element("h3", "", toPublicEventCopy(pass.event.name)),
         element("p", "", `Added ${formatDate(pass.claimedAt)}`)
       );
       const link = element("a", "event-card-link", "View event");
@@ -267,25 +390,54 @@ export function createAppController() {
     return wrapper;
   }
 
-  async function renderEvent(eventId) {
+  async function renderEvent(eventId, now, generation) {
     const container = document.querySelector("#event-detail");
     container.replaceChildren();
     if (!readContract) {
       container.append(element("h1", "", "Event unavailable"), element("p", "", "The BOTPass contract is not available."));
       return;
     }
-    const event = await readEventFromContract(readContract, eventId);
-    const availability = getEventAvailability(event);
-    const passAddedAt = wallet.account
-      ? BigInt(await readContract.claimedAt(event.id, wallet.account))
-      : 0n;
+    container.setAttribute("aria-busy", "true");
+    container.append(element("p", "detail-loading", "Loading event…"));
+    let event;
+    let passAddedAt = 0n;
+    try {
+      event = await readEventFromContract(readContract, eventId);
+      if (wallet.account) {
+        passAddedAt = BigInt(await readContract.claimedAt(event.id, wallet.account));
+      }
+      if (generation !== routeRenderGeneration) return;
+      container.replaceChildren();
+    } catch (error) {
+      if (generation !== routeRenderGeneration) return;
+      container.replaceChildren(
+        element("h1", "", "Event unavailable"),
+        element("p", "", "Event details could not be loaded. Refresh to retry.")
+      );
+      throw error;
+    } finally {
+      if (generation === routeRenderGeneration) {
+        container.setAttribute("aria-busy", "false");
+      }
+    }
+    const availability = getEventAvailability(event, now);
+    scheduleLifecycleRefresh([event], now);
     const hasPass = passAddedAt > 0n;
+    const action = getPassActionState({
+      availability,
+      hasPass,
+      writesEnabled: FRONTEND_CONFIG.writesEnabled,
+    });
     const head = element("div", "detail-head");
     const heading = element("div");
-    heading.append(element("p", "eyebrow", `EVENT #${event.id}`), element("h1", "", event.name), element("p", "lead", event.description));
+    heading.append(
+      element("p", "eyebrow", `EVENT #${event.id}`),
+      element("h1", "", toPublicEventCopy(event.name)),
+      element("p", "lead", toPublicEventCopy(event.description))
+    );
     head.append(heading, availabilityIndicator(availability));
     const facts = element("dl", "facts");
-    facts.append(fact("Organizer", shortAddress(event.organizer)), fact("Location", event.location), fact("Starts", formatDate(event.startTime)), fact("Ends", formatDate(event.endTime)), fact("Passes issued", event.passCount.toString()));
+    facts.append(fact("Organizer", shortAddress(event.organizer)), fact("Location", toPublicEventCopy(event.location)), fact("Starts", formatDate(event.startTime)), fact("Ends", formatDate(event.endTime)), fact("Passes issued", event.passCount.toString()));
     const attendeePanel = element("div", "event-action-panel");
     const attendeeCopy = element("div");
     attendeeCopy.append(
@@ -295,16 +447,16 @@ export function createAppController() {
         "action-note",
         hasPass
           ? `This wallet added its pass on ${formatDate(passAddedAt)}.`
-          : availability.reason
+          : action.reason
       )
     );
-    const getPass = element("button", "button primary", hasPass ? "Pass added" : "Get pass");
+    const getPass = element("button", "button primary", action.label);
     getPass.type = "button";
-    getPass.disabled = hasPass || !availability.canGetPass || !FRONTEND_CONFIG.writesEnabled;
+    getPass.disabled = action.disabled;
     getPass.addEventListener("click", async () => {
       try {
         const contract = await requireWriteContract();
-        await transact("Get pass", () => contract.claimOpen(event.id), () => renderEvent(event.id));
+        await transact("Get pass", () => contract.claimOpen(event.id), () => renderRoute());
       } catch (error) { showError(error); }
     });
     attendeePanel.append(attendeeCopy, getPass);
@@ -326,7 +478,7 @@ export function createAppController() {
         try {
           const contract = await requireWriteContract();
           const label = event.claimOpen ? "Pause passes" : "Enable passes";
-          await transact(label, () => contract.setClaimOpen(event.id, !event.claimOpen), () => renderEvent(event.id));
+          await transact(label, () => contract.setClaimOpen(event.id, !event.claimOpen), () => renderRoute());
         } catch (error) { showError(error); }
       });
       organizerPanel.append(organizerCopy, toggle);
@@ -345,11 +497,21 @@ export function createAppController() {
   }
 
   async function renderRoute() {
+    const generation = ++routeRenderGeneration;
     const route = showRoute();
-    if (route.name === "home") await renderHome();
-    if (route.name === "manage") await renderManage();
-    if (route.name === "passes") await renderPasses();
-    if (route.name === "event") await renderEvent(route.eventId);
+    if (lifecycleTimer !== null) {
+      clearTimeout(lifecycleTimer);
+      lifecycleTimer = null;
+    }
+    const timedRoute = ["home", "manage", "event"].includes(route.name);
+    const now = timedRoute && readProvider
+      ? await readLatestBlockTimestamp(readProvider)
+      : null;
+    if (generation !== routeRenderGeneration) return;
+    if (route.name === "home") await renderHome(now, generation);
+    if (route.name === "manage") await renderManage(now, generation);
+    if (route.name === "passes") await renderPasses(generation);
+    if (route.name === "event") await renderEvent(route.eventId, now, generation);
   }
 
   function bindForms() {
@@ -381,8 +543,8 @@ export function createAppController() {
             "p",
             "",
             valid
-              ? `${shortAddress(getAddress(walletAddress))} added a pass for ${details.name} on ${formatDate(claimedAt)}.`
-              : `${shortAddress(getAddress(walletAddress))} does not have a pass for ${details.name}.`
+              ? `${shortAddress(getAddress(walletAddress))} added a pass for ${toPublicEventCopy(details.name)} on ${formatDate(claimedAt)}.`
+              : `${shortAddress(getAddress(walletAddress))} does not have a pass for ${toPublicEventCopy(details.name)}.`
           )
         );
         result.dataset.valid = String(valid);
@@ -407,7 +569,7 @@ export function createAppController() {
           throw new Error("Copy the address directly from your wallet extension.");
         }
         await navigator.clipboard.writeText(wallet.account);
-        setWalletMenu(false);
+        setWalletMenu(false, { restoreFocus: true });
         setStatus("Wallet address copied.");
       } catch (error) { showError(error); }
     });
@@ -417,9 +579,8 @@ export function createAppController() {
       if (!control.contains(event.target)) setWalletMenu(false);
     });
     document.addEventListener("keydown", (event) => {
-      if (event.key === "Escape") {
-        setWalletMenu(false);
-        button.focus();
+      if (event.key === "Escape" && button.getAttribute("aria-expanded") === "true") {
+        setWalletMenu(false, { restoreFocus: true });
       }
     });
   }
@@ -446,19 +607,20 @@ export function createAppController() {
         if (!isWalletDisconnected()) {
           Object.assign(wallet, await readWalletSnapshot());
         }
+        const refreshWallet = createWalletRefreshHandler({
+          isDisconnected: isWalletDisconnected,
+          clear: clearConnectedWallet,
+          read: () => readWalletSnapshot(),
+          apply: (snapshot) => {
+            Object.assign(wallet, snapshot);
+            updateWallet();
+          },
+          render: renderRoute,
+          onError: showError,
+        });
         bindWalletEvents({
-          onAccountsChanged: async () => {
-            if (isWalletDisconnected()) return;
-            Object.assign(wallet, await readWalletSnapshot());
-            updateWallet();
-            await renderRoute();
-          },
-          onChainChanged: async () => {
-            if (isWalletDisconnected()) return;
-            Object.assign(wallet, await readWalletSnapshot());
-            updateWallet();
-            await renderRoute();
-          },
+          onAccountsChanged: refreshWallet,
+          onChainChanged: refreshWallet,
         });
       } catch (error) {
         banner.dataset.state = "pending";
@@ -468,7 +630,11 @@ export function createAppController() {
       }
       updateWallet();
     }
-    await renderRoute();
+    try {
+      await renderRoute();
+    } catch (error) {
+      showError(error);
+    }
   }
 
   return { initialize, renderRoute };

@@ -41,6 +41,13 @@ function technicalMessage(error) {
   ).slice(0, 800);
 }
 
+function publicFallbackMessage(technical) {
+  const internalTerminology = /\bclaims?(?:ed|ing)?\b|claimOpen|claimedAt|\bQR\b|legac[y]|previous deployment|removed flow/i;
+  return internalTerminology.test(technical)
+    ? "The action could not be completed. Check your wallet and try again."
+    : technical;
+}
+
 export function describeError(error) {
   const revertData = findRevertData(error);
   if (revertData) {
@@ -95,7 +102,7 @@ export function describeError(error) {
   }
   return {
     kind: "failed",
-    message: technical,
+    message: publicFallbackMessage(technical),
     technical,
   };
 }

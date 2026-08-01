@@ -30,18 +30,18 @@
         <a href="./?guide" data-link="guide">How It Works</a>
       </nav>
       <div class="wallet-control">
-        <button id="connect-button" class="button wallet-button" type="button" aria-haspopup="menu" aria-expanded="false">
+        <button id="connect-button" class="button wallet-button" type="button" aria-controls="wallet-menu" aria-expanded="false">
           <span id="wallet-button-label">Connect wallet</span>
           <span class="wallet-chevron" aria-hidden="true">⌄</span>
         </button>
-        <div id="wallet-menu" class="wallet-menu" role="menu" hidden>
+        <div id="wallet-menu" class="wallet-menu" hidden>
           <div class="wallet-identity">
             <span>Connected wallet</span>
             <strong id="wallet-address"></strong>
           </div>
-          <button id="copy-wallet-button" type="button" role="menuitem">Copy address</button>
-          <button id="switch-wallet-button" type="button" role="menuitem">Switch account</button>
-          <button id="disconnect-wallet-button" type="button" role="menuitem">Disconnect from BOTPass</button>
+          <button id="copy-wallet-button" type="button">Copy address</button>
+          <button id="switch-wallet-button" type="button">Switch account</button>
+          <button id="disconnect-wallet-button" type="button">Disconnect from BOTPass</button>
           <p>Disconnecting hides the wallet here. Your wallet extension may still remember this site.</p>
         </div>
       </div>
