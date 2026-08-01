@@ -70,8 +70,6 @@ npm run deploy:testnet
 npm run deploy:mainnet
 ```
 
-The Mainnet prompt accepts only `DEPLOY BOTPASS TO BOT CHAIN MAINNET 677`. Deployment is capped at 1,400,000 gas, with a complete Mainnet budget of 0.0389 BOT and a 25% safety buffer.
-
 ## Project structure
 
 - [`contracts/BOTPass.sol`](contracts/BOTPass.sol) — canonical Solidity contract.
