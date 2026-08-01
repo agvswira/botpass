@@ -1,33 +1,32 @@
 # BOTPass
 
-BOTPass is a compact, fully functional Open Claim event registry for BOT Chain.
+BOTPass is an on-chain event attendance-pass registry on BOT Chain: organizers create events and control availability, attendees record one pass per wallet, and anyone can verify it.
 
-An organizer creates an event and controls whether claims are open. During the event window, each wallet can claim once. The contract stores the claim timestamp and an event-level pass count so anyone can verify attendance without relying on a private database.
+**Live site:** [botpass.online](https://botpass.online/)
+
+## Product flow
+
+- **Events** — browse events and select **Get pass** while passes are available.
+- **Create** — create an event from an organizer wallet.
+- **Manage** — organizers enable or pause passes for their own events.
+- **My Passes** — view passes recorded for the connected wallet.
+- **Verify** — check whether a wallet has a pass for an event.
 
 ## Contract flow
 
-1. `createEvent(name, description, location, startTime, endTime)` creates an immutable event with claims closed.
-2. `setClaimOpen(eventId, true)` lets that event's organizer open claims.
-3. `claimOpen(eventId)` records the caller's timestamp once.
-4. `claimedAt(eventId, wallet)` verifies a claim; zero means no claim exists.
-5. `getEvent(eventId)` returns the event, organizer, claim state, and pass count.
+1. `createEvent(name, description, location, startTime, endTime)` creates an event with passes paused.
+2. `setClaimOpen(eventId, true)` enables pass availability for that event; its organizer can also pause it.
+3. When an attendee chooses **Get pass**, `claimOpen(eventId)` records one attendance pass for that wallet.
+4. `claimedAt(eventId, wallet)` returns the recorded time; zero means the wallet has no pass for the event.
+5. `getEvent(eventId)` returns the event data, organizer, availability, and pass count.
 
-There is no QR session, NFT, token ID, metadata renderer, or on-chain index array. The frontend discovers and filters the latest 100 event IDs.
+## Networks and evidence
 
-## Networks
+The Testnet preview contract is [`0x2ea9E965433D8f42F9C0caa8BC223335f8e14f6C`](https://scan.bohr.life/address/0x2ea9E965433D8f42F9C0caa8BC223335f8e14f6C) on BOT Chain Testnet (chain ID 968). Its deployment receipt is committed in [`deployments/968.json`](deployments/968.json); event #1 creation and pass-availability receipt evidence is committed in [`deployments/968-demo.json`](deployments/968-demo.json).
 
-| Purpose | Chain | Chain ID | Deployer |
-|---|---|---:|---|
-| Interactive demo | BOT Chain Testnet | 968 | `0xe604829a9c327b0d924718CfAcEF69BBdC8C0Efc` |
-| Hackathon submission | BOT Chain Mainnet | 677 | `0x1396483BFA097Da425658eDef1fdD373D66Be224` |
+Mainnet deployment is pending. It will deploy the same functional contract without creating or exercising a Mainnet event. A Mainnet address will be documented only after `deployments/677.json` exists following confirmed runtime verification.
 
-The Mainnet workflow deploys the same functional bytecode but does not create, open, or claim an event. The Mainnet address will be added after deployment.
-
-Fresh Testnet contract: [`0x2ea9E965433D8f42F9C0caa8BC223335f8e14f6C`](https://scan.bohr.life/address/0x2ea9E965433D8f42F9C0caa8BC223335f8e14f6C)
-
-Fresh Testnet demo event: [event #1](https://scan.bohr.life/address/0x2ea9E965433D8f42F9C0caa8BC223335f8e14f6C) is created with Open Claim enabled. Its canonical transaction receipts are recorded in `deployments/968-demo.json`.
-
-## Local development
+## Local verification
 
 ```bash
 npm install
@@ -36,14 +35,32 @@ npm run integration:local
 npm run frontend:build
 npm run frontend:validate
 npm run frontend:validate:a11y
+npm run repository:validate
 ```
 
-Use `npm run deploy:testnet:inspect` or `npm run deploy:mainnet:inspect` for transaction-free inspection. Authorized deployment requires the matching private-key environment variable and an exact interactive confirmation phrase.
+## Guarded deployment workflow
 
-The deployment guard rejects estimates above 1,400,000 gas. On Mainnet it also rejects any current fee estimate whose maximum cost plus a 25% buffer exceeds the complete 0.0389 BOT budget.
+Offline inspection sends no transaction:
 
-## Web documentation
+```bash
+npm run deploy:testnet:inspect
+npm run deploy:mainnet:inspect
+```
 
-The public interface includes an English **How It Works** page that follows the product menu: Events, Create, Manage, Open Claim, My Passes, and Verify.
+Live preflight also sends no transaction:
+
+```bash
+npm run deploy:testnet:preflight
+npm run deploy:mainnet:preflight
+```
+
+Deployment requires the matching deployer key and the exact interactive confirmation guard:
+
+```bash
+npm run deploy:testnet
+npm run deploy:mainnet
+```
+
+The Mainnet prompt accepts only `DEPLOY BOTPASS TO BOT CHAIN MAINNET 677`. Deployment is capped at 1,400,000 gas, with a complete Mainnet budget of 0.0389 BOT and a 25% safety buffer.
 
 License: MIT.
