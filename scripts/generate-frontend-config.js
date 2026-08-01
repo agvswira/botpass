@@ -197,10 +197,7 @@ function generateContractConfig({
     deploymentTransactionHash: active?.deploymentTransactionHash ?? null,
     activationReviewed: Boolean(active),
     sourceVerified: active?.verificationStatus === "verified",
-    writesEnabled:
-      selectedEnvironment === "staging" &&
-      network.chainId === TESTNET_CHAIN_ID &&
-      Boolean(active),
+    writesEnabled: Boolean(active),
   };
 
   return [

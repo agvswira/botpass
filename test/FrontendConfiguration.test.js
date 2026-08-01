@@ -1,5 +1,7 @@
 "use strict";
 
+const fs = require("node:fs");
+const os = require("node:os");
 const path = require("node:path");
 const { expect } = require("chai");
 const {
@@ -19,6 +21,25 @@ const { buildDeploymentRecord } = require("../scripts/lib/deployment");
 
 describe("BOTPass frontend configuration", function () {
   const projectRoot = path.resolve(__dirname, "..");
+
+  function validateConfigSource(source) {
+    const temporaryRoot = fs.mkdtempSync(
+      path.join(os.tmpdir(), "botpass-frontend-config-")
+    );
+    const configPath = path.join(
+      temporaryRoot,
+      "frontend",
+      "src",
+      "contract-config.js"
+    );
+    fs.mkdirSync(path.dirname(configPath), { recursive: true });
+    fs.writeFileSync(configPath, source, "utf8");
+    try {
+      return validateGeneratedFrontend(temporaryRoot);
+    } finally {
+      fs.rmSync(temporaryRoot, { recursive: true, force: true });
+    }
+  }
 
   it("binds the public demo to the reviewed fresh Testnet deployment", function () {
     const output = buildGeneratedOutputs();
@@ -42,10 +63,17 @@ describe("BOTPass frontend configuration", function () {
 
   it("can still generate a truthful Mainnet-pending submission view", function () {
     const config = parseGeneratedConfig(buildGeneratedOutputs({ environment: "production" }).config);
-    expect(config).to.include({ environment: "production", status: "pending", chainId: MAINNET_CHAIN_ID, contractAddress: null });
+    expect(config).to.include({
+      environment: "production",
+      status: "pending",
+      chainId: MAINNET_CHAIN_ID,
+      contractAddress: null,
+      activationReviewed: false,
+      writesEnabled: false,
+    });
   });
 
-  it("enables writes only for an active Testnet deployment", function () {
+  it("enables writes only for an active reviewed deployment", function () {
     const deployment = (network) => buildDeploymentRecord({
       network,
       contractAddress: "0x1111111111111111111111111111111111111111",
@@ -66,7 +94,54 @@ describe("BOTPass frontend configuration", function () {
     const testnet = deployment(BOTCHAIN_TESTNET);
     const mainnet = deployment(BOTCHAIN_MAINNET);
     expect(parseGeneratedConfig(buildGeneratedOutputs({ environment: "staging", deployment: testnet, activation: activation(testnet) }).config).writesEnabled).to.equal(true);
-    expect(parseGeneratedConfig(buildGeneratedOutputs({ environment: "production", deployment: mainnet, activation: activation(mainnet) }).config).writesEnabled).to.equal(false);
+    expect(parseGeneratedConfig(buildGeneratedOutputs({ environment: "production", deployment: mainnet, activation: activation(mainnet) }).config).writesEnabled).to.equal(true);
+  });
+
+  it("validates active reviewed Testnet and Mainnet configurations with writes enabled", function () {
+    const deployment = (network) => buildDeploymentRecord({
+      network,
+      contractAddress: "0x1111111111111111111111111111111111111111",
+      deployerAddress: network.intendedDeployer,
+      deploymentTransactionHash: `0x${"22".repeat(32)}`,
+      deploymentBlockNumber: 123,
+      deploymentTimestampUtc: "2026-07-31T01:02:03.000Z",
+      sourceCommit: "a".repeat(40),
+      runtimeBytecodeKeccak256: `0x${"33".repeat(32)}`,
+    });
+    const activation = (record) => ({
+      enabled: true,
+      reviewed: true,
+      chainId: record.chainId,
+      contractAddress: record.contractAddress,
+      deploymentTransactionHash: record.deploymentTransactionHash,
+    });
+    const testnet = deployment(BOTCHAIN_TESTNET);
+    const mainnet = deployment(BOTCHAIN_MAINNET);
+    const generated = (environment, record) =>
+      buildGeneratedOutputs({
+        environment,
+        deployment: record,
+        activation: activation(record),
+      }).config;
+
+    expect(validateConfigSource(generated("staging", testnet))).to.deep.equal({
+      environment: "staging",
+      chainId: TESTNET_CHAIN_ID,
+      deploymentStatus: "active",
+    });
+    expect(validateConfigSource(generated("production", mainnet))).to.deep.equal({
+      environment: "production",
+      chainId: MAINNET_CHAIN_ID,
+      deploymentStatus: "active",
+    });
+    expect(() =>
+      validateConfigSource(
+        generated("production", mainnet).replace(
+          '"writesEnabled": true',
+          '"writesEnabled": false'
+        )
+      )
+    ).to.throw("BOTPass writes require an active reviewed deployment");
   });
 
   it("validates the checked-in active staging configuration", function () {

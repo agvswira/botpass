@@ -137,11 +137,8 @@ function validateGeneratedFrontend(projectRoot) {
   ) {
     throw new Error("BOTPass deployment state must be active or truthfully pending");
   }
-  if (
-    config.status === "active" &&
-    config.writesEnabled !== (config.environment === "staging")
-  ) {
-    throw new Error("BOTPass writes must be enabled only for active Testnet staging");
+  if (config.status === "active" && config.writesEnabled !== true) {
+    throw new Error("BOTPass writes require an active reviewed deployment");
   }
   return {
     environment: config.environment,

@@ -1,6 +1,6 @@
 "use strict";
 
-// Mainnet remains read-only and pending until the hackathon deployment.
+// Mainnet remains pending until its deployment record and activation are reviewed.
 const FRONTEND_ACTIVATIONS = Object.freeze({
   production: null,
   staging: Object.freeze({
