@@ -456,12 +456,12 @@ describe("BOTPass frontend application services", function () {
           throw error;
         }
         if (method === "eth_accounts") return ["0x1111111111111111111111111111111111111111"];
-        if (method === "eth_chainId") return "0x3c8";
+        if (method === "eth_chainId") return "0x2a5";
         return null;
       },
     };
     const snapshot = await switchOrAddBotChain({ provider });
-    expect(snapshot.chainId).to.equal(968);
+    expect(snapshot.chainId).to.equal(677);
     expect(calls).to.include("wallet_addEthereumChain");
   });
 

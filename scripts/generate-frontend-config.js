@@ -146,7 +146,7 @@ function validateConfiguredStagingEvidence({
 }
 
 function generateContractConfig({
-  environment = "staging",
+  environment = "production",
   deployment = null,
   activation = null,
   acceptance = null,
@@ -224,7 +224,7 @@ function parseGeneratedConfig(source) {
 }
 
 function buildGeneratedOutputs({
-  environment = process.env.BOTPASS_FRONTEND_ENVIRONMENT || "staging",
+  environment = process.env.BOTPASS_FRONTEND_ENVIRONMENT || "production",
   artifactPath = ARTIFACT_PATH,
   deployment = null,
   activation = null,

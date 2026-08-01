@@ -78,7 +78,7 @@ function reviewedMainnetConfig() {
 }
 
 describe("BOTPass Pages build validator", function () {
-  it("accepts a build matching the current active Testnet configuration", function () {
+  it("accepts a build matching the checked-in active Mainnet configuration", function () {
     const configSource = fs.readFileSync(
       path.join(projectRoot, "frontend/src/contract-config.js"),
       "utf8"
@@ -86,10 +86,11 @@ describe("BOTPass Pages build validator", function () {
     const root = createBuildFixture(configSource);
     try {
       expect(validatePagesBuild(root)).to.deep.include({
-        environment: "staging",
+        environment: "production",
         deploymentStatus: "active",
-        networkName: "BOT Chain Testnet",
-        chainId: 968,
+        networkName: "BOT Chain Mainnet",
+        chainId: 677,
+        contractAddress: "0x41fc0234A8f94482168B063FDE7ABE67043E68A4",
       });
     } finally {
       removeFixture(root);

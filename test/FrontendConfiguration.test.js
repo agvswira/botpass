@@ -42,7 +42,7 @@ describe("BOTPass frontend configuration", function () {
   }
 
   it("binds the public demo to the reviewed fresh Testnet deployment", function () {
-    const output = buildGeneratedOutputs();
+    const output = buildGeneratedOutputs({ environment: "staging" });
     const config = parseGeneratedConfig(output.config);
     expect(config).to.include({
       environment: "staging",
@@ -55,14 +55,36 @@ describe("BOTPass frontend configuration", function () {
     expect(output.abi).not.to.match(/claimWithSession|tokenOf|ownerOf|tokenURI/);
   });
 
+  it("defaults the public build to the confirmed Mainnet deployment receipt", function () {
+    const config = parseGeneratedConfig(
+      buildGeneratedOutputs().config
+    );
+    expect(config).to.include({
+      environment: "production",
+      status: "active",
+      chainId: MAINNET_CHAIN_ID,
+      contractAddress: "0x41fc0234A8f94482168B063FDE7ABE67043E68A4",
+      deploymentTransactionHash:
+        "0xb86877c47c9b6b937f0142245d2c6e9083ed73e87d5b36b063d0624f43a7105f",
+      activationReviewed: true,
+      sourceVerified: false,
+      writesEnabled: true,
+    });
+  });
+
   it("generates only the compact Open Claim ABI", function () {
     const abi = JSON.parse(buildGeneratedOutputs().abi);
     expect(abi.filter(({ type }) => type === "function").map(({ name }) => name).sort()).to.deep.equal([...REQUIRED_FUNCTIONS].sort());
     expect(abi.filter(({ type }) => type === "event").map(({ name }) => name).sort()).to.deep.equal([...RELEVANT_EVENTS].sort());
   });
 
-  it("can still generate a truthful Mainnet-pending submission view", function () {
-    const config = parseGeneratedConfig(buildGeneratedOutputs({ environment: "production" }).config);
+  it("can generate a truthful Mainnet-pending view when activation is disabled", function () {
+    const config = parseGeneratedConfig(
+      buildGeneratedOutputs({
+        environment: "production",
+        activation: false,
+      }).config
+    );
     expect(config).to.include({
       environment: "production",
       status: "pending",
@@ -144,8 +166,8 @@ describe("BOTPass frontend configuration", function () {
     ).to.throw("BOTPass writes require an active reviewed deployment");
   });
 
-  it("validates the checked-in active staging configuration", function () {
-    expect(validateGeneratedFrontend(projectRoot)).to.deep.equal({ environment: "staging", chainId: TESTNET_CHAIN_ID, deploymentStatus: "active" });
+  it("validates the checked-in active production configuration", function () {
+    expect(validateGeneratedFrontend(projectRoot)).to.deep.equal({ environment: "production", chainId: MAINNET_CHAIN_ID, deploymentStatus: "active" });
   });
 
   it("requires the menu routes, English guide, and anchored footer", function () {

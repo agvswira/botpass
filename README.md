@@ -22,17 +22,11 @@ BOTPass is an on-chain event attendance-pass registry on BOT Chain: organizers c
 
 ## Networks and evidence
 
-The Testnet preview contract is [`0x2ea9E965433D8f42F9C0caa8BC223335f8e14f6C`](https://scan.bohr.life/address/0x2ea9E965433D8f42F9C0caa8BC223335f8e14f6C) on BOT Chain Testnet (chain ID 968). Its deployment receipt is committed in [`deployments/968.json`](deployments/968.json); event #1 creation and pass-availability receipt evidence is committed in [`deployments/968-demo.json`](deployments/968-demo.json).
+The Mainnet contract is [`0x41fc0234A8f94482168B063FDE7ABE67043E68A4`](https://scan.botchain.ai/address/0x41fc0234A8f94482168B063FDE7ABE67043E68A4) on BOT Chain Mainnet (chain ID 677). Its confirmed receipt and exact runtime-bytecode evidence are committed in [`deployments/677.json`](deployments/677.json). No event was created and no contract function was exercised on Mainnet after deployment.
 
-Mainnet deployment is pending. It will deploy the same functional contract without creating or exercising a Mainnet event. A Mainnet address will be documented only after `deployments/677.json` exists following confirmed runtime verification.
+The Testnet preview contract is [`0x2ea9E965433D8f42F9C0caa8BC223335f8e14f6C`](https://scan.bohr.life/address/0x2ea9E965433D8f42F9C0caa8BC223335f8e14f6C) on BOT Chain Testnet (chain ID 968). Its deployment receipt is committed in [`deployments/968.json`](deployments/968.json); Event ID 1 creation and pass-availability receipt evidence are committed in [`deployments/968-demo.json`](deployments/968-demo.json).
 
-After receipt and runtime verification creates `deployments/677.json`, activate the production frontend in this order:
-
-1. Review the production entry in `config/frontend-activation.js` against the verified Mainnet receipt and contract address before enabling it.
-2. Generate and build the reviewed production configuration with `BOTPASS_FRONTEND_ENVIRONMENT=production npm run frontend:generate` and `BOTPASS_FRONTEND_ENVIRONMENT=production npm run frontend:build`.
-3. Run `BOTPASS_FRONTEND_ENVIRONMENT=production npm run frontend:validate`, `npm run frontend:validate:a11y`, and `npm run frontend:validate:dist` against that production build.
-
-This sequence describes post-deployment activation; it does not indicate that a Mainnet deployment has occurred.
+Production builds use the reviewed Mainnet deployment by default. To generate the Testnet preview explicitly, set `BOTPASS_FRONTEND_ENVIRONMENT=staging` when running the frontend generation or build command.
 
 ## Local verification
 
