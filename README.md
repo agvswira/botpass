@@ -1,18 +1,27 @@
 # BOTPass
 
-BOTPass is an on-chain event attendance-pass registry on BOT Chain: organizers create events and control availability, attendees record one pass per wallet, and anyone can verify it.
+BOTPass is an on-chain event attendance-pass registry on BOT Chain: organizers create events and control availability, attendees record one pass for each event they attend, and anyone can verify it.
 
-**Live site:** [botpass.online](https://botpass.online/)
+## Project links
 
-**Mainnet contract:** [`0x41fc0234A8f94482168B063FDE7ABE67043E68A4`](https://scan.botchain.ai/address/0x41fc0234A8f94482168B063FDE7ABE67043E68A4) on BOT Chain Mainnet (chain ID 677), with fully verified source code on BOTScan.
+- **Live website:** [botpass.online](https://botpass.online/)
+- **Mainnet contract:** [`0x41fc0234A8f94482168B063FDE7ABE67043E68A4`](https://scan.botchain.ai/address/0x41fc0234A8f94482168B063FDE7ABE67043E68A4)
+- **Source repository:** [github.com/agvswira/botpass](https://github.com/agvswira/botpass)
+- **X post:** `...`
 
-## Product flow
+## Why BOTPass
 
-- **Events** — browse events and select **Get pass** while passes are available.
-- **Create** — create an event from an organizer wallet.
-- **Manage** — organizers enable or pause passes for their own events.
-- **My Passes** — view passes recorded for the connected wallet.
-- **Verify** — check whether a wallet has a pass for an event.
+Event attendance is often stored in a private list that attendees cannot independently check. BOTPass gives each organizer control over its own events while recording at most one verifiable attendance pass per event for each wallet on BOT Chain. The result can be checked later by anyone using only an Event ID and wallet address.
+
+## How to use
+
+BOTPass works with an injected EVM wallet such as MetaMask or BO Wallet. Select **Connect wallet** and approve the request; the app asks the wallet to add or switch to BOT Chain Mainnet when necessary.
+
+1. **Events** — browse available events, open one, and select **Get pass** during its active time while the organizer has made passes available. Each wallet can get one pass per event.
+2. **Create** — connect an organizer wallet, enter the event details and time window, then confirm the transaction. A new event starts with passes paused.
+3. **Manage** — use the same organizer wallet to enable or pause passes for events it created. Other wallets cannot change those settings.
+4. **My Passes** — connect a wallet to see its recorded passes and the time each one was added.
+5. **Verify** — enter an Event ID and wallet address to check whether a pass exists. Verification is read-only and costs no gas.
 
 ## Contract flow
 
@@ -24,18 +33,40 @@ BOTPass is an on-chain event attendance-pass registry on BOT Chain: organizers c
 
 ## Networks and evidence
 
-The Mainnet deployment's confirmed receipt, compiler settings, and exact runtime-bytecode evidence are committed in [`deployments/677.json`](deployments/677.json). No event was created and no contract function was exercised on Mainnet after deployment.
+The production contract is deployed on BOT Chain Mainnet and its Solidity source is fully verified on BOTScan.
+
+| Deployment detail | Value |
+| --- | --- |
+| Network | BOT Chain Mainnet (chain ID 677) |
+| Contract | [`0x41fc0234A8f94482168B063FDE7ABE67043E68A4`](https://scan.botchain.ai/address/0x41fc0234A8f94482168B063FDE7ABE67043E68A4) |
+| Transaction | [`0xb86877c47c9b6b937f0142245d2c6e9083ed73e87d5b36b063d0624f43a7105f`](https://scan.botchain.ai/tx/0xb86877c47c9b6b937f0142245d2c6e9083ed73e87d5b36b063d0624f43a7105f) |
+| Deployer | `0x1396483BFA097Da425658eDef1fdD373D66Be224` |
+| Deployed | 2026-08-01 06:37:03 UTC |
+| Compiler | Solidity 0.8.20, optimizer enabled with 200 runs |
+| Evidence | Transaction metadata, compiler settings, and runtime-bytecode size and hash in [`deployments/677.json`](deployments/677.json) |
+
+No event was created and no contract function was exercised on Mainnet after deployment.
 
 The Testnet preview contract is [`0x2ea9E965433D8f42F9C0caa8BC223335f8e14f6C`](https://scan.bohr.life/address/0x2ea9E965433D8f42F9C0caa8BC223335f8e14f6C) on BOT Chain Testnet (chain ID 968). Its deployment receipt is committed in [`deployments/968.json`](deployments/968.json); Event ID 1 creation and pass-availability receipt evidence are committed in [`deployments/968-demo.json`](deployments/968-demo.json).
 
 Production builds use the reviewed Mainnet deployment by default. To generate the Testnet preview explicitly, set `BOTPASS_FRONTEND_ENVIRONMENT=staging` when running the frontend generation or build command.
 
-## Local verification
+## Run locally
 
-Requires Node.js 24 (see [`.nvmrc`](.nvmrc)). Install the exact dependency versions from the committed lockfile, then run every verification gate:
+Requires Node.js 24 (see [`.nvmrc`](.nvmrc)). Install the exact dependency versions from the committed lockfile and start the Vite development server:
 
 ```bash
 npm ci
+npm run frontend:dev
+```
+
+Copy [`.env.example`](.env.example) to `.env` only when running network preflight or deployment commands. Keep deployer keys local; `.env` files are ignored by Git.
+
+## Verify the repository
+
+Run every automated verification gate:
+
+```bash
 npm test
 npm run integration:local
 npm run frontend:build
@@ -44,8 +75,6 @@ npm run frontend:validate:a11y
 npm run frontend:validate:dist
 npm run repository:validate
 ```
-
-Copy [`.env.example`](.env.example) to `.env` only when running network preflight or deployment commands. Keep deployer keys local; `.env` files are ignored by Git.
 
 ## Guarded deployment workflow
 
@@ -77,5 +106,7 @@ npm run deploy:mainnet
 - [`scripts/`](scripts/) — guarded deployment, verification, generation, and validation tools.
 - [`test/`](test/) — contract, deployment-safety, integration, frontend, and repository tests.
 - [`deployments/`](deployments/) — immutable deployment and transaction evidence.
+
+The project uses Solidity 0.8.20, ethers.js 6.17.0, Hardhat 2.29.0, and Vite 8.1.5. The frontend is deployed through GitHub Actions to GitHub Pages with the custom domain `botpass.online`.
 
 License: MIT.
