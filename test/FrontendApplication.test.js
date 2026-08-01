@@ -29,6 +29,10 @@ class TestElement {
   setAttribute(name, value) {
     this.attributes[name] = value;
   }
+
+  removeAttribute(name) {
+    delete this.attributes[name];
+  }
 }
 
 function descendants(node, tagName) {
@@ -80,6 +84,139 @@ describe("BOTPass frontend application services", function () {
     const html = fs.readFileSync(path.join(projectRoot, "frontend/index.html"), "utf8");
     expect(html).to.match(/<ul\s+id="home-events"\s+class="event-list"[^>]*><\/ul>/i);
     expect(html).to.match(/<ul\s+id="manage-events"\s+class="event-list"[^>]*><\/ul>/i);
+  });
+
+  it("keeps pre-initialization network status neutral", function () {
+    const html = fs.readFileSync(path.join(projectRoot, "frontend/index.html"), "utf8");
+    expect(html).not.to.match(/BOT Chain (?:Testnet|Mainnet)/);
+    expect(html).not.to.match(/https:\/\/(?:rpc|scan)\.(?:bohr\.life|botchain\.ai)/);
+    expect(html).to.include('id="deployment-title">Loading network status…');
+    expect(html).to.include('id="footer-network-label">Loading network…');
+    expect(html).to.match(/id="network-contract-link"[^>]*aria-disabled="true"/);
+    expect(html).to.match(/id="contract-link"[^>]*aria-disabled="true"/);
+  });
+
+  it("populates active deployment status and explorer links from configuration", async function () {
+    const { applyDeploymentPresentation } = await importModule(
+      "frontend/src/pass/controller.mjs"
+    );
+    const elements = Object.fromEntries(
+      [
+        "deployment-banner",
+        "deployment-title",
+        "deployment-message",
+        "network-contract-link",
+        "contract-link",
+        "footer-network-label",
+      ].map((id) => [id, new TestElement("DIV")])
+    );
+    const previousDocument = global.document;
+    global.document = {
+      querySelector: (selector) => elements[selector.slice(1)],
+    };
+    try {
+      applyDeploymentPresentation(
+        {
+          networkName: "BOT Chain Mainnet",
+          chainId: 677,
+          explorerUrl: "https://scan.botchain.ai",
+          contractAddress: "0x1111111111111111111111111111111111111111",
+        },
+        { active: true }
+      );
+
+      expect(elements["deployment-banner"].dataset.state).to.equal("active");
+      expect(elements["deployment-title"].textContent).to.equal("BOT Chain Mainnet");
+      expect(elements["deployment-message"].textContent).to.equal(
+        "Contract 0x1111…1111 · Chain 677"
+      );
+      expect(elements["footer-network-label"].textContent).to.equal(
+        "BOT Chain Mainnet"
+      );
+      expect(elements["network-contract-link"].textContent).to.equal(
+        "View contract"
+      );
+      expect(elements["contract-link"].textContent).to.equal("View on BOTScan");
+      for (const id of ["network-contract-link", "contract-link"]) {
+        expect(elements[id].href).to.equal(
+          "https://scan.botchain.ai/address/0x1111111111111111111111111111111111111111"
+        );
+        expect(elements[id].attributes).not.to.have.property("aria-disabled");
+      }
+
+      applyDeploymentPresentation(
+        {
+          networkName: "BOT Chain Testnet",
+          chainId: 968,
+          explorerUrl: "https://scan.bohr.life",
+          contractAddress: "0x2222222222222222222222222222222222222222",
+        },
+        { active: true }
+      );
+      expect(elements["deployment-title"].textContent).to.equal(
+        "BOT Chain Testnet"
+      );
+      expect(elements["deployment-message"].textContent).to.equal(
+        "Contract 0x2222…2222 · Chain 968"
+      );
+      expect(elements["footer-network-label"].textContent).to.equal(
+        "BOT Chain Testnet"
+      );
+      expect(elements["contract-link"].href).to.equal(
+        "https://scan.bohr.life/address/0x2222222222222222222222222222222222222222"
+      );
+    } finally {
+      global.document = previousDocument;
+    }
+  });
+
+  it("keeps a pending configured deployment truthful and disabled", async function () {
+    const { applyDeploymentPresentation } = await importModule(
+      "frontend/src/pass/controller.mjs"
+    );
+    const elements = Object.fromEntries(
+      [
+        "deployment-banner",
+        "deployment-title",
+        "deployment-message",
+        "network-contract-link",
+        "contract-link",
+        "footer-network-label",
+      ].map((id) => [id, new TestElement("DIV")])
+    );
+    const previousDocument = global.document;
+    global.document = {
+      querySelector: (selector) => elements[selector.slice(1)],
+    };
+    try {
+      applyDeploymentPresentation(
+        {
+          networkName: "BOT Chain Mainnet",
+          chainId: 677,
+          explorerUrl: "https://scan.botchain.ai",
+          contractAddress: null,
+        },
+        { active: false }
+      );
+
+      expect(elements["deployment-banner"].dataset.state).to.equal("pending");
+      expect(elements["deployment-title"].textContent).to.equal(
+        "BOT Chain Mainnet deployment pending"
+      );
+      expect(elements["deployment-message"].textContent).to.equal(
+        "Chain 677 · Read and write actions are unavailable."
+      );
+      expect(elements["footer-network-label"].textContent).to.equal(
+        "BOT Chain Mainnet"
+      );
+      for (const id of ["network-contract-link", "contract-link"]) {
+        expect(elements[id]).not.to.have.property("href");
+        expect(elements[id].attributes["aria-disabled"]).to.equal("true");
+        expect(elements[id].textContent).to.equal("Contract unavailable");
+      }
+    } finally {
+      global.document = previousDocument;
+    }
   });
 
   it("orders event rows by lifecycle and gives each lifecycle its contextual action", async function () {
@@ -141,6 +278,22 @@ describe("BOTPass frontend application services", function () {
     expect(row.metadata[3].value).to.equal("2 passes issued");
   });
 
+  it("uses singular pass-count copy only for exactly one pass", async function () {
+    const { getEventListRowData } = await importModule(
+      "frontend/src/pass/controller.mjs"
+    );
+    const organizer = "0x1111111111111111111111111111111111111111";
+    const rowFor = (passCount) =>
+      getEventListRowData(
+        { ...event(organizer), id: 42n, passCount },
+        { now: 1_800_000_001n }
+      ).metadata[3].value;
+
+    expect(rowFor(0n)).to.equal("0 passes issued");
+    expect(rowFor(1n)).to.equal("1 pass issued");
+    expect(rowFor(2n)).to.equal("2 passes issued");
+  });
+
   it("renders each event as one semantic row with one contextual link", async function () {
     const { renderEventListRow } = await importModule("frontend/src/pass/controller.mjs");
     const previousDocument = global.document;
@@ -163,7 +316,12 @@ describe("BOTPass frontend application services", function () {
   });
 
   it("derives attendee-facing pass availability from the event window", async function () {
-    const { getEventAvailability, getNextLifecycleRefreshDelay, getPassActionState } = await importModule("frontend/src/pass/controller.mjs");
+    const {
+      assertReviewedDeploymentWritesEnabled,
+      getEventAvailability,
+      getNextLifecycleRefreshDelay,
+      getPassActionState,
+    } = await importModule("frontend/src/pass/controller.mjs");
     const active = event("0x1111111111111111111111111111111111111111");
 
     expect(getEventAvailability(active, 1_799_999_999n)).to.deep.include({
@@ -207,6 +365,10 @@ describe("BOTPass frontend application services", function () {
       disabled: true,
       reason: null,
     });
+    expect(() => assertReviewedDeploymentWritesEnabled(false)).to.throw(
+      "BOTPass writes require an active reviewed deployment."
+    );
+    expect(() => assertReviewedDeploymentWritesEnabled(true)).not.to.throw();
   });
 
   it("normalizes legacy demo titles before generic public terminology", async function () {

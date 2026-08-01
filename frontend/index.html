@@ -51,7 +51,7 @@
       <aside id="deployment-banner" class="network-bar" role="status" aria-live="polite">
         <span class="network-dot" aria-hidden="true"></span>
         <div><strong id="deployment-title">Loading network status…</strong><span id="deployment-message"></span></div>
-        <a id="network-contract-link" href="https://scan.bohr.life" target="_blank" rel="noreferrer">View contract</a>
+        <a id="network-contract-link" aria-disabled="true" target="_blank" rel="noreferrer">Contract explorer loading…</a>
       </aside>
       <div id="transaction-status" class="transaction-status" role="status" aria-live="polite" hidden></div>
 
@@ -129,7 +129,7 @@
 
     <footer class="site-footer">
       <div><strong>BOTPass</strong><p>Verifiable event passes on BOT Chain.</p></div>
-      <div><span>BOT Chain Testnet</span><a id="contract-link" href="https://scan.bohr.life" target="_blank" rel="noreferrer">View on BOTScan</a></div>
+      <div><span id="footer-network-label">Loading network…</span><a id="contract-link" aria-disabled="true" target="_blank" rel="noreferrer">Contract explorer loading…</a></div>
     </footer>
     <script type="module" src="./src/app.js"></script>
   </body>

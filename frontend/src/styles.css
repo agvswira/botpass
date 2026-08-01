@@ -185,6 +185,7 @@ main {
 .network-bar strong { margin-right: 0.5rem; color: var(--ink); }
 .network-bar a { color: var(--blue); font-weight: 700; text-decoration: none; }
 .network-bar a:hover { text-decoration: underline; }
+.network-bar a[aria-disabled="true"] { opacity: 0.65; pointer-events: none; }
 
 .transaction-status {
   position: sticky;
@@ -388,6 +389,7 @@ textarea { resize: vertical; }
 .site-footer p { margin: 0.25rem 0 0; color: #aebde4; }
 .site-footer div:last-child { display: flex; flex-direction: column; align-items: end; gap: 0.45rem; color: #aebde4; }
 .site-footer a { color: white; }
+.site-footer a[aria-disabled="true"] { opacity: 0.65; pointer-events: none; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
 
 @media (max-width: 980px) {

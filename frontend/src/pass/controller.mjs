@@ -105,6 +105,7 @@ export function getEventListCta(availability, { manage = false } = {}) {
 
 export function getEventListRowData(event, { manage = false, now } = {}) {
   const availability = getEventAvailability(event, now);
+  const passCount = event.passCount.toString();
   return {
     lifecycle: availability.label,
     lifecycleKey: availability.key,
@@ -115,7 +116,10 @@ export function getEventListRowData(event, { manage = false, now } = {}) {
       { label: "When", value: formatEventTimeRange(event.startTime, event.endTime) },
       { label: "Where", value: toPublicEventCopy(event.location) },
       { label: "Organizer", value: shortAddress(event.organizer) },
-      { label: "Passes", value: `${event.passCount} passes issued` },
+      {
+        label: "Passes",
+        value: `${passCount} ${passCount === "1" ? "pass" : "passes"} issued`,
+      },
     ],
     action: getEventListCta(availability, { manage }),
   };
@@ -166,6 +170,46 @@ export function getPassActionState({ availability, hasPass, writesEnabled }) {
     disabled: false,
     reason: availability.reason,
   };
+}
+
+export function assertReviewedDeploymentWritesEnabled(writesEnabled) {
+  if (!writesEnabled) {
+    throw new Error("BOTPass writes require an active reviewed deployment.");
+  }
+}
+
+export function applyDeploymentPresentation(config, { active } = {}) {
+  const isActive = active ?? (
+    config.status === "active" && Boolean(config.contractAddress)
+  );
+  const banner = document.querySelector("#deployment-banner");
+  banner.dataset.state = isActive ? "active" : "pending";
+  document.querySelector("#deployment-title").textContent = isActive
+    ? config.networkName
+    : `${config.networkName} deployment pending`;
+  document.querySelector("#deployment-message").textContent = isActive
+    ? `Contract ${shortAddress(config.contractAddress)} · Chain ${config.chainId}`
+    : `Chain ${config.chainId} · Read and write actions are unavailable.`;
+  document.querySelector("#footer-network-label").textContent =
+    config.networkName;
+
+  const contractUrl = isActive
+    ? `${config.explorerUrl}/address/${config.contractAddress}`
+    : null;
+  for (const selector of ["#contract-link", "#network-contract-link"]) {
+    const link = document.querySelector(selector);
+    if (contractUrl) {
+      link.href = contractUrl;
+      link.textContent = selector === "#contract-link"
+        ? "View on BOTScan"
+        : "View contract";
+      link.removeAttribute("aria-disabled");
+    } else {
+      link.removeAttribute("href");
+      link.textContent = "Contract unavailable";
+      link.setAttribute("aria-disabled", "true");
+    }
+  }
 }
 
 function element(tag, className, text) {
@@ -321,9 +365,7 @@ export function createAppController() {
   }
 
   async function requireWriteContract() {
-    if (!FRONTEND_CONFIG.writesEnabled) {
-      throw new Error("BOTPass writes are enabled only for the interactive Testnet demo.");
-    }
+    assertReviewedDeploymentWritesEnabled(FRONTEND_CONFIG.writesEnabled);
     if (!wallet.account) await connect();
     if (wallet.chainId !== FRONTEND_CONFIG.chainId) Object.assign(wallet, await switchOrAddBotChain());
     return getWriteContract(wallet.browserProvider);
@@ -638,12 +680,7 @@ export function createAppController() {
     showRoute();
     const active = hasActiveDeployment();
     const banner = document.querySelector("#deployment-banner");
-    banner.dataset.state = active ? "active" : "pending";
-    document.querySelector("#deployment-title").textContent = active ? "BOT Chain Testnet" : "Contract unavailable";
-    document.querySelector("#deployment-message").textContent = active ? `Contract ${shortAddress(FRONTEND_CONFIG.contractAddress)} · Chain ${FRONTEND_CONFIG.chainId}` : "Read and write actions are unavailable.";
-    const contractUrl = active ? `${FRONTEND_CONFIG.explorerUrl}/address/${FRONTEND_CONFIG.contractAddress}` : FRONTEND_CONFIG.explorerUrl;
-    document.querySelector("#contract-link").href = contractUrl;
-    document.querySelector("#network-contract-link").href = contractUrl;
+    applyDeploymentPresentation(FRONTEND_CONFIG, { active });
     document.querySelector("#connect-button").disabled = !active;
     document.querySelector("#create-form button[type=submit]").disabled =
       !FRONTEND_CONFIG.writesEnabled;
@@ -673,8 +710,8 @@ export function createAppController() {
         });
       } catch (error) {
         banner.dataset.state = "pending";
-        document.querySelector("#deployment-title").textContent = "BOT Chain RPC unavailable";
-        document.querySelector("#deployment-message").textContent = "Contract data could not be loaded. Refresh to retry.";
+        document.querySelector("#deployment-title").textContent = `${FRONTEND_CONFIG.networkName} RPC unavailable`;
+        document.querySelector("#deployment-message").textContent = `Chain ${FRONTEND_CONFIG.chainId} · Contract data could not be loaded. Refresh to retry.`;
         showError(error);
       }
       updateWallet();
