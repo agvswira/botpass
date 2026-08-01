@@ -80,6 +80,4 @@ The Mainnet prompt accepts only `DEPLOY BOTPASS TO BOT CHAIN MAINNET 677`. Deplo
 - [`test/`](test/) — contract, deployment-safety, integration, frontend, and repository tests.
 - [`deployments/`](deployments/) — immutable deployment and transaction evidence.
 
-Release history is available in [`CHANGELOG.md`](CHANGELOG.md).
-
 License: MIT.
